@@ -6,9 +6,14 @@ import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import WhatsAppButton from './WhatsAppButton';
 import OfferViewTracker from './OfferViewTracker';
 
-// ─── Fallback resort image ────────────────────────────────────────────────────
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80';
+// Cycling fallback images (beach, pool, luxury room, resort, city hotel)
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
+  'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&q=80',
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+  'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&q=80',
+  'https://images.unsplash.com/photo-1455587734955-081b22074882?w=800&q=80',
+];
 
 export default async function OfferPage({
   params,
@@ -21,90 +26,82 @@ export default async function OfferPage({
   if (!offer) notFound();
 
   const agencyLabel = offer.agencyName?.trim() || 'Səyahət Təklifi';
+  const waNumber    = offer.managerWhatsapp.replace(/\D/g, '');
+  const waUrl       = `https://wa.me/${waNumber}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      {/* Track page view */}
+    <div className="min-h-screen bg-[#0F172A] font-sans">
       <OfferViewTracker offerId={offer.id} />
 
-      {/* ── Hero header ──────────────────────────────────────────────────── */}
-      <header className="relative bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 text-white overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-600/20 rounded-full" />
-        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-800/30 rounded-full" />
-
-        <div className="relative px-5 pt-10 pb-8 max-w-lg mx-auto">
-          {/* Logo / Agency */}
-          <div className="flex items-center gap-3 mb-6">
-            {offer.agencyLogo ? (
-              <Image
-                src={offer.agencyLogo}
-                alt={agencyLabel}
-                width={40}
-                height={40}
-                className="rounded-xl object-contain bg-white/10 p-1"
-                unoptimized
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-xl">
-                ✈️
-              </div>
-            )}
-            <div>
-              <p className="font-bold text-base leading-tight">{agencyLabel}</p>
-              {offer.managerName && (
-                <p className="text-blue-200 text-xs">{offer.managerName}</p>
-              )}
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <header className="bg-[#0F172A] border-b border-white/5 px-5 py-5">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          {offer.agencyLogo ? (
+            <Image
+              src={offer.agencyLogo}
+              alt={agencyLabel}
+              width={44}
+              height={44}
+              className="rounded-xl object-contain"
+              unoptimized
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-xl font-bold text-white">
+              {agencyLabel.charAt(0).toUpperCase()}
             </div>
+          )}
+          <div>
+            <p className="font-bold text-white text-sm leading-tight">{agencyLabel}</p>
+            {offer.managerName && (
+              <p className="text-slate-400 text-xs">{offer.managerName}</p>
+            )}
           </div>
-
-          {/* Greeting */}
-          <h1 className="text-2xl font-extrabold leading-snug mb-1">
-            Hörmətli {offer.clientName},
-          </h1>
-          <p className="text-blue-100 text-sm">
-            sizin üçün xüsusi seçilmiş tur paketləri aşağıdadır.
-          </p>
+          <div className="ml-auto text-right">
+            <p className="text-xs text-slate-500">Xüsusi Təklif</p>
+            <p className="text-teal-400 text-xs font-semibold">Premium</p>
+          </div>
         </div>
       </header>
 
-      {/* ── Trip summary card ─────────────────────────────────────────────── */}
-      <div className="max-w-lg mx-auto px-4 -mt-5 relative z-10">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-5 space-y-3">
-          <InfoRow icon="📍" label="İstiqamət" value={offer.destination} />
-          {offer.dateRange && (
-            <InfoRow icon="📅" label="Tarix" value={offer.dateRange} />
-          )}
-          {offer.passengers && (
-            <InfoRow icon="👥" label="Səyahətçilər" value={offer.passengers} />
-          )}
+      {/* ── Greeting + Summary band ───────────────────────────────────── */}
+      <div className="bg-[#1E293B] border-b border-white/5">
+        <div className="max-w-lg mx-auto px-5 py-5">
+          <h1 className="text-white text-xl font-extrabold leading-snug mb-1">
+            Hörmətli {offer.clientName},
+          </h1>
+          <p className="text-slate-400 text-sm mb-4">
+            sizin üçün xüsusi hazırlanmış tur paketi
+          </p>
+
+          {/* Info chips */}
+          <div className="flex flex-wrap gap-2">
+            <Chip icon="📍" text={offer.destination} />
+            {offer.dateRange && <Chip icon="📅" text={offer.dateRange} />}
+            {offer.nights > 0 && <Chip icon="🌙" text={`${offer.nights} gecə`} />}
+            {offer.passengers && <Chip icon="👥" text={offer.passengers} />}
+          </div>
 
           {/* Included services */}
           {offer.includes.length > 0 && (
-            <div className="pt-1">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                Qiymətə daxildir
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {INCLUDES_META.filter(m => offer.includes.includes(m.key)).map(m => (
-                  <span
-                    key={m.key}
-                    className="inline-flex items-center gap-1 bg-blue-50 text-blue-800 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-100"
-                  >
-                    {m.emoji} {m.label}
-                  </span>
-                ))}
-              </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {INCLUDES_META.filter(m => offer.includes.includes(m.key)).map(m => (
+                <span
+                  key={m.key}
+                  className="inline-flex items-center gap-1 bg-teal-900/40 text-teal-300 text-xs font-medium px-2.5 py-1 rounded-full border border-teal-700/30"
+                >
+                  {m.emoji} {m.label}
+                </span>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Hotel cards ───────────────────────────────────────────────────── */}
-      <section className="max-w-lg mx-auto px-4 mt-6 pb-16 space-y-5">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 pl-1">
+      {/* ── Hotel cards ───────────────────────────────────────────────── */}
+      <section className="max-w-lg mx-auto px-4 py-5 pb-28 space-y-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 pl-1">
           {offer.hotels.length} Otel Variantı
-        </h2>
+        </p>
 
         {offer.hotels.map((hotel, i) => (
           <HotelCard
@@ -113,28 +110,47 @@ export default async function OfferPage({
             index={i}
             offer={offer}
             offerId={offer.id}
+            fallbackImage={FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
           />
         ))}
 
-        {/* Footer note */}
-        <p className="text-center text-xs text-slate-400 pt-2">
+        {/* 24h validity note */}
+        <div className="flex items-start gap-3 bg-amber-900/20 border border-amber-700/30 rounded-2xl px-4 py-3 mt-2">
+          <span className="text-amber-400 text-base mt-0.5">⏰</span>
+          <p className="text-amber-300 text-xs leading-relaxed">
+            Bu qiymətlər <strong>24 saat</strong> ərzindədir. Yerlər məhdud olduğundan təklif tez bitə bilər.
+          </p>
+        </div>
+
+        <p className="text-center text-xs text-slate-600 pt-1">
           Maraqlandığınız variant üzərinə klikləyin – menecer sizinlə əlaqə saxlayacaq.
         </p>
       </section>
+
+      {/* ── Sticky WhatsApp footer bar ────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-[#0F172A]/95 backdrop-blur-md border-t border-white/10 px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-sm shadow-lg shadow-green-900/30 active:scale-[.98] transition-all"
+          >
+            <WaIcon />
+            Menecer ilə əlaqə saxla
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Info row component ───────────────────────────────────────────────────────
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+// ─── Chip component ───────────────────────────────────────────────────────────
+function Chip({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="text-base w-6 flex-shrink-0 mt-0.5">{icon}</span>
-      <div>
-        <p className="text-xs text-slate-400 font-medium">{label}</p>
-        <p className="text-sm font-semibold text-slate-800">{value}</p>
-      </div>
-    </div>
+    <span className="inline-flex items-center gap-1.5 bg-white/5 text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10">
+      <span>{icon}</span> {text}
+    </span>
   );
 }
 
@@ -146,8 +162,8 @@ function Stars({ count }: { count: number }) {
         <svg
           key={i}
           viewBox="0 0 20 20"
-          fill={i < count ? '#f59e0b' : '#e2e8f0'}
-          className="w-4 h-4"
+          fill={i < count ? '#f59e0b' : '#334155'}
+          className="w-3.5 h-3.5"
         >
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
@@ -162,85 +178,93 @@ function HotelCard({
   index,
   offer,
   offerId,
+  fallbackImage,
 }: {
   hotel: Hotel;
   index: number;
   offer: Offer;
   offerId: string;
+  fallbackImage: string;
 }) {
-  const imageSrc = hotel.imageUrl?.trim() || FALLBACK_IMAGE;
-  const symbol   = CURRENCY_SYMBOLS[hotel.currency] ?? hotel.currency;
-  const mealText = MEAL_LABELS[hotel.mealType] ?? hotel.mealType;
+  const imageSrc   = hotel.imageUrl?.trim() || fallbackImage;
+  const symbol     = CURRENCY_SYMBOLS[hotel.currency] ?? hotel.currency;
+  const mealText   = MEAL_LABELS[hotel.mealType] ?? hotel.mealType;
+  const priceLabel = hotel.priceType === 'total' ? 'Ümumi paket' : 'Nəfər başına';
 
-  // Build WhatsApp message
   const waMessage = `Salam! Göndərdiyiniz təklifə baxdım. ${offer.destination} üzrə ${offer.dateRange} tarixləri üçün *${hotel.name}* (${hotel.price.toLocaleString()} ${symbol}) variantı ilə maraqlanıram.`;
-
-  const waNumber = offer.managerWhatsapp.replace(/\D/g, '');
-  const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
+  const waNumber  = offer.managerWhatsapp.replace(/\D/g, '');
+  const waUrl     = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
 
   return (
-    <article className="bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100">
+    <article className="bg-[#1E293B] rounded-3xl overflow-hidden border border-white/5 shadow-xl">
       {/* Hotel image */}
-      <div className="relative h-52 w-full overflow-hidden">
+      <div className="relative h-[280px] w-full overflow-hidden">
         <Image
           src={imageSrc}
           alt={hotel.name}
           fill
           className="object-cover"
           sizes="(max-width: 512px) 100vw, 512px"
-          unoptimized={!imageSrc.startsWith('https://images.unsplash')}
+          unoptimized={!imageSrc.includes('unsplash.com')}
         />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1E293B] via-[#1E293B]/20 to-transparent" />
 
-        {/* Stars badge overlaid on image */}
-        <div className="absolute bottom-3 left-4">
-          <Stars count={hotel.stars} />
+        {/* Variant badge */}
+        <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full border border-white/20">
+          Variant {index + 1}
         </div>
 
-        {/* Option number badge */}
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-blue-900 text-xs font-bold px-2.5 py-1 rounded-full">
-          Variant {index + 1}
+        {/* Stars + meal overlaid on image */}
+        <div className="absolute bottom-4 left-4 flex items-center gap-2">
+          <Stars count={hotel.stars} />
+          <span className="bg-black/50 backdrop-blur-sm text-xs text-white font-bold px-2 py-0.5 rounded-full border border-white/20">
+            {hotel.mealType}
+          </span>
         </div>
       </div>
 
       {/* Card body */}
-      <div className="p-4 space-y-3">
-        {/* Name + meal */}
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-extrabold text-slate-900 text-lg leading-tight">
+      <div className="px-5 pb-5 pt-2 space-y-3">
+        {/* Hotel name */}
+        <div>
+          <h3 className="text-white font-extrabold text-xl leading-tight">
             {hotel.name}
           </h3>
-          <span className="flex-shrink-0 bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-100 whitespace-nowrap">
-            {hotel.mealType}
-          </span>
+          <p className="text-slate-400 text-xs mt-0.5">{mealText}</p>
         </div>
-
-        {/* Meal description */}
-        <p className="text-slate-500 text-xs">{mealText}</p>
 
         {/* Note */}
         {hotel.note && (
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
-            <span className="text-amber-500 mt-0.5">✨</span>
-            <p className="text-amber-800 text-sm font-medium leading-snug">
+          <div className="flex items-start gap-2 bg-amber-900/20 border border-amber-700/30 rounded-xl px-3 py-2.5">
+            <span className="text-amber-400 text-sm mt-0.5">✨</span>
+            <p className="text-amber-200 text-sm font-medium leading-snug">
               {hotel.note}
             </p>
           </div>
         )}
 
-        {/* Price */}
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-3xl font-black text-blue-900">
+        {/* Price block */}
+        <div className="flex items-baseline gap-1 pt-1">
+          <span className="text-4xl font-black text-white tracking-tight">
             {hotel.price.toLocaleString('az-AZ')}
           </span>
-          <span className="text-lg font-bold text-blue-700">{symbol}</span>
-          <span className="text-xs text-slate-400 ml-auto">nəfər başına</span>
+          <span className="text-2xl font-bold text-teal-400">{symbol}</span>
+          <span className="text-xs text-slate-500 ml-2 self-end pb-0.5">{priceLabel}</span>
         </div>
 
         {/* WhatsApp CTA */}
         <WhatsAppButton waUrl={waUrl} hotelName={hotel.name} offerId={offerId} />
       </div>
     </article>
+  );
+}
+
+// ─── WhatsApp icon (for sticky footer) ───────────────────────────────────────
+function WaIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 flex-shrink-0">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
   );
 }

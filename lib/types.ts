@@ -18,6 +18,8 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   EUR: '€',
 };
 
+export type PriceType = 'per_person' | 'total';
+
 export interface Hotel {
   name: string;
   stars: Stars;
@@ -25,6 +27,7 @@ export interface Hotel {
   imageUrl?: string;
   price: number;
   currency: Currency;
+  priceType?: PriceType;
   note?: string;
 }
 

@@ -152,15 +152,16 @@ export default async function DashboardPage() {
 
                         {/* Analytics */}
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-slate-500">
-                            👁 {offer.views_count ?? 0} baxış
-                          </span>
                           {isSelected ? (
                             <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               ✅ Seçilib: {offer.selected_hotel}
                             </span>
+                          ) : (offer.views_count ?? 0) > 0 ? (
+                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                              👁 Baxılıb {offer.views_count} dəfə
+                            </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium px-2.5 py-0.5 rounded-full">
                               ⏳ Gözlənilir
                             </span>
                           )}
@@ -182,7 +183,7 @@ export default async function DashboardPage() {
                           href={`/create?from=${offer.id}`}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
                         >
-                          📋 Yenilə
+                          📋 Kopyala
                         </Link>
                       </div>
                     </div>

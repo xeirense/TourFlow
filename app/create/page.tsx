@@ -7,6 +7,15 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { Currency, MealType, Stars } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 
+// ─── Preset hotel images ──────────────────────────────────────────────────────
+const PRESET_IMAGES = [
+  { label: 'Çimərlik', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' },
+  { label: 'Hovuz',    url: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&q=80' },
+  { label: 'Otaq',     url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80' },
+  { label: 'Resort',   url: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&q=80' },
+  { label: 'Şəhər',   url: 'https://images.unsplash.com/photo-1455587734955-081b22074882?w=800&q=80' },
+];
+
 // ─── Hotel form state ─────────────────────────────────────────────────────────
 interface HotelDraft {
   name: string;
@@ -15,11 +24,12 @@ interface HotelDraft {
   imageUrl: string;
   price: string;
   currency: Currency;
+  priceType: 'per_person' | 'total';
   note: string;
 }
 
 function blankHotel(): HotelDraft {
-  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'USD', note: '' };
+  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'USD', priceType: 'per_person', note: '' };
 }
 
 function formatDisplayDate(iso: string): string {
@@ -101,13 +111,14 @@ function CreatePageContent() {
         setIncludes(offer.includes ?? ['flight', 'hotel']);
         if (offer.hotels?.length) {
           setHotels(offer.hotels.map((h: HotelDraft & { price: number }) => ({
-            name:     h.name,
-            stars:    h.stars,
-            mealType: h.mealType,
-            imageUrl: h.imageUrl ?? '',
-            price:    String(h.price),
-            currency: h.currency,
-            note:     h.note ?? '',
+            name:      h.name,
+            stars:     h.stars,
+            mealType:  h.mealType,
+            imageUrl:  h.imageUrl ?? '',
+            price:     String(h.price),
+            currency:  h.currency,
+            priceType: h.priceType ?? 'per_person',
+            note:      h.note ?? '',
           })));
         }
       })
@@ -165,13 +176,14 @@ function CreatePageContent() {
             passengers: passengers.trim(),
             includes,
             hotels: hotels.map(h => ({
-              name:     h.name.trim(),
-              stars:    Number(h.stars) as Stars,
-              mealType: h.mealType as MealType,
-              imageUrl: h.imageUrl.trim() || undefined,
-              price:    parseFloat(h.price) || 0,
-              currency: h.currency,
-              note:     h.note.trim() || undefined,
+              name:      h.name.trim(),
+              stars:     Number(h.stars) as Stars,
+              mealType:  h.mealType as MealType,
+              imageUrl:  h.imageUrl.trim() || undefined,
+              price:     parseFloat(h.price) || 0,
+              currency:  h.currency,
+              priceType: h.priceType,
+              note:      h.note.trim() || undefined,
             })),
           }),
         });
@@ -536,6 +548,24 @@ interface HotelBlockProps {
 }
 
 function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) onChange({ imageUrl: data.url });
+    } catch {}
+    setUploading(false);
+    // Reset input so same file can be re-uploaded
+    e.target.value = '';
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -593,9 +623,9 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
         </select>
       </Field>
 
-      {/* Price & Currency */}
+      {/* Price, Currency & Price type */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
+        <div className="col-span-1">
           <Field label="Qiymət *">
             <input
               type="number"
@@ -620,18 +650,73 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
             ))}
           </select>
         </Field>
+        <Field label="Qiymət növü">
+          <select
+            value={hotel.priceType}
+            onChange={e => onChange({ priceType: e.target.value as 'per_person' | 'total' })}
+            className={inputCls}
+          >
+            <option value="per_person">Nəfər başına</option>
+            <option value="total">Ümumi paket</option>
+          </select>
+        </Field>
       </div>
 
-      {/* Image URL */}
-      <Field label="Otel şəkli URL-i (opsional)">
+      {/* Image section: presets + file upload + URL */}
+      <div className="space-y-2">
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          Otel şəkli
+        </label>
+
+        {/* Preset thumbnails */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {PRESET_IMAGES.map(preset => (
+            <button
+              key={preset.url}
+              type="button"
+              onClick={() => onChange({ imageUrl: preset.url })}
+              title={preset.label}
+              className={`flex-shrink-0 w-16 h-11 rounded-lg overflow-hidden border-2 transition-all ${
+                hotel.imageUrl === preset.url
+                  ? 'border-blue-500 ring-2 ring-blue-300'
+                  : 'border-transparent hover:border-slate-300'
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={preset.url.replace('w=800', 'w=100')}
+                alt={preset.label}
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* File upload */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex-shrink-0">
+            <span>📁</span>
+            {uploading ? 'Yüklənir...' : 'Fayl seç'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={handleFileUpload}
+            />
+          </label>
+          <span className="text-xs text-slate-400">maks. 5 MB</span>
+        </div>
+
+        {/* URL fallback */}
         <input
           type="url"
           value={hotel.imageUrl}
           onChange={e => onChange({ imageUrl: e.target.value })}
-          placeholder="https://... (boş qalsa standart şəkil)"
+          placeholder="Və ya şəkil URL-i yapışdırın..."
           className={inputCls}
         />
-      </Field>
+      </div>
 
       {/* Note */}
       <Field label="Qısa özəllik / Qeyd">
