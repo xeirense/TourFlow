@@ -42,7 +42,7 @@ function formatDisplayDate(iso: string): string {
 export default function CreatePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
         <span className="inline-block w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     }>
@@ -237,23 +237,23 @@ function CreatePageContent() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (offerLink) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center">
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+        <div className="bg-[#1E293B] border border-white/5 rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center">
           <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Təklif hazırdır!</h2>
-          <p className="text-sm text-slate-500 mb-6">
+          <h2 className="text-xl font-bold text-white mb-2">Təklif hazırdır!</h2>
+          <p className="text-sm text-slate-400 mb-6">
             Aşağıdakı linki müştəriyə göndərin
           </p>
 
           {/* Link box */}
-          <div className="bg-slate-50 rounded-xl p-3 text-xs text-blue-700 font-mono break-all mb-4 select-all border border-slate-200">
+          <div className="bg-white/5 rounded-xl p-3 text-xs text-teal-400 font-mono break-all mb-4 select-all border border-white/10">
             {offerLink}
           </div>
 
           <div className="flex flex-col gap-3">
             <button
               onClick={copyLink}
-              className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold transition-colors"
+              className="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold transition-colors"
             >
               {copied ? '✓ Kopyalandı!' : '📋 Linki kopyala'}
             </button>
@@ -270,14 +270,14 @@ function CreatePageContent() {
 
             <Link
               href="/dashboard"
-              className="w-full py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium transition-colors text-center block"
+              className="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-medium transition-colors text-center block"
             >
               📊 Dashboard-a qayıt
             </Link>
 
             <button
               onClick={resetForm}
-              className="w-full py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium transition-colors"
+              className="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 font-medium transition-colors"
             >
               + Yeni təklif yarat
             </button>
@@ -293,21 +293,21 @@ function CreatePageContent() {
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Top bar */}
-      <header className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-md">
-        <span className="text-2xl">✈️</span>
+      <header className="bg-[#0F172A] border-b border-white/5 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-base">✈️</div>
         <div className="flex-1">
-          <h1 className="font-bold text-base leading-tight">TourFlow</h1>
-          <p className="text-blue-200 text-xs">30 Saniyəlik Tur Təklifi</p>
+          <h1 className="font-bold text-sm leading-tight">TourFlow</h1>
+          <p className="text-slate-500 text-xs">30 Saniyəlik Tur Təklifi</p>
         </div>
         <Link
           href="/dashboard"
-          className="text-xs text-blue-200 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+          className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
         >
           📊 Dashboard
         </Link>
         <button
           onClick={handleLogout}
-          className="text-xs text-blue-200 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+          className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
         >
           Çıxış
         </button>
@@ -442,8 +442,8 @@ function CreatePageContent() {
                   onClick={() => toggleInclude(key)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                     includes.includes(key)
-                      ? 'bg-blue-700 border-blue-700 text-white'
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+                      ? 'bg-teal-600 border-teal-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300'
                   }`}
                 >
                   <span>{emoji}</span> {label}
@@ -493,7 +493,7 @@ function CreatePageContent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:opacity-60 text-white text-base font-bold shadow-lg shadow-blue-200 transition-all active:scale-[.98]"
+          className="w-full py-4 rounded-2xl bg-[#0F172A] border border-teal-500/50 hover:border-teal-400 disabled:opacity-60 text-white text-base font-bold shadow-lg transition-all active:scale-[.98]"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">

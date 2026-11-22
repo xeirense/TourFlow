@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import CopyButton from './CopyButton';
@@ -59,28 +60,31 @@ export default async function DashboardPage() {
   const totalViews  = offers.reduce((sum, o) => sum + (o.views_count ?? 0), 0);
   const totalSelected = offers.filter(o => o.status === 'selected').length;
 
-  // Build absolute URLs — use env or fallback to relative
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  // Build absolute base URL — env var takes priority, then derive from request host
+  const reqHeaders = await headers();
+  const host  = reqHeaders.get('host') ?? '';
+  const proto = host.startsWith('localhost') ? 'http' : 'https';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (host ? `${proto}://${host}` : '');
 
   return (
     <div className="min-h-screen bg-slate-100">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-4 py-4 sticky top-0 z-10 shadow-md">
+      <header className="bg-[#0F172A] border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <span className="text-2xl">✈️</span>
+          <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-base">✈️</div>
           <div className="flex-1">
-            <h1 className="font-bold text-base leading-tight">{agencyLabel}</h1>
-            <p className="text-blue-200 text-xs">TourFlow Dashboard</p>
+            <h1 className="font-bold text-sm leading-tight">{agencyLabel}</h1>
+            <p className="text-slate-500 text-xs">TourFlow Dashboard</p>
           </div>
           <Link
             href="/create"
-            className="bg-white text-blue-900 font-bold text-xs px-4 py-2 rounded-xl hover:bg-blue-50 transition-colors"
+            className="bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors"
           >
             + Yeni Təklif
           </Link>
           <Link
             href="/dashboard/settings"
-            className="text-xs text-blue-200 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+            className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
           >
             ⚙️ Profil
           </Link>

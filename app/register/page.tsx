@@ -60,27 +60,27 @@ export default function RegisterPage() {
   }
 
   const inputCls =
-    'w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition';
+    'w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 py-8">
+      <div className="bg-[#1E293B] border border-white/5 rounded-3xl shadow-2xl p-8 w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-700 text-white text-3xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-500/20 text-white text-3xl mb-4 border border-teal-500/30">
             ✈️
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-800">TourFlow</h1>
-          <p className="text-slate-500 text-sm mt-1">Agentlik hesabı yaradın</p>
+          <h1 className="text-2xl font-extrabold text-white">TourFlow</h1>
+          <p className="text-slate-400 text-sm mt-1">Agentlik hesabı yaradın</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Account info */}
-          <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Hesab məlumatları</p>
+          <div className="bg-white/5 rounded-2xl p-4 space-y-3 border border-white/5">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Hesab məlumatları</p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Email *</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Email *</label>
               <input
                 type="email"
                 required
@@ -92,7 +92,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Şifrə *</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Şifrə *</label>
               <input
                 type="password"
                 required
@@ -105,11 +105,11 @@ export default function RegisterPage() {
           </div>
 
           {/* Agency info */}
-          <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Agentlik məlumatları</p>
+          <div className="bg-white/5 rounded-2xl p-4 space-y-3 border border-white/5">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Agentlik məlumatları</p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Agentlik adı</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Agentlik adı</label>
               <input
                 type="text"
                 value={agencyName}
@@ -120,7 +120,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">WhatsApp nömrəsi</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">WhatsApp nömrəsi</label>
               <input
                 type="tel"
                 value={whatsapp}
@@ -131,7 +131,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Loqo URL-i (opsional)</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Loqo URL-i (opsional)</label>
               <input
                 type="url"
                 value={agencyLogo}
@@ -151,7 +151,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white font-bold text-sm transition-colors"
+            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-colors"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -164,9 +164,9 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-slate-400 mt-6">
           Artıq hesabınız var?{' '}
-          <Link href="/login" className="text-blue-700 font-semibold hover:underline">
+          <Link href="/login" className="text-teal-400 font-semibold hover:underline">
             Daxil olun
           </Link>
         </p>
