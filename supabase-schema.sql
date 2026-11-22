@@ -62,7 +62,15 @@ CREATE POLICY "Public read offers"
   FOR SELECT
   USING (true);
 
--- INSERT/UPDATE/DELETE done via service key (bypasses RLS entirely)
+-- Authenticated users can INSERT their own offers (agency_id must match JWT uid)
+CREATE POLICY "Auth users insert own offers"
+  ON public.offers
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (agency_id = auth.uid());
+
+-- Authenticated users can SELECT their own offers (in addition to public read)
+-- (public read policy already covers this, kept for clarity)
 
 -- ── Row Level Security – agency_profiles ──────────────────────────────────────
 ALTER TABLE public.agency_profiles ENABLE ROW LEVEL SECURITY;
@@ -85,6 +93,18 @@ AS $$
   WHERE id = offer_id;
 $$;
 
+-- ── Helper RPC: set selected hotel when customer clicks WhatsApp ───────────────
+CREATE OR REPLACE FUNCTION select_offer_hotel(p_offer_id TEXT, p_hotel_name TEXT)
+RETURNS void
+LANGUAGE SQL
+SECURITY DEFINER
+AS $$
+  UPDATE public.offers
+  SET selected_hotel = p_hotel_name,
+      status         = 'selected'
+  WHERE id = p_offer_id;
+$$;
+
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX offers_created_at_idx ON public.offers (created_at DESC);
 CREATE INDEX offers_agency_id_idx  ON public.offers (agency_id);
@@ -94,8 +114,17 @@ CREATE INDEX offers_agency_id_idx  ON public.offers (agency_id);
 --  (skip if running from scratch)
 -- ============================================================
 
+-- Column migrations (uncomment if table already existed before these columns)
 -- ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS agency_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 -- ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS selected_hotel TEXT;
 -- ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
 -- ALTER TABLE public.offers ALTER COLUMN date_range SET DEFAULT '';
+
+-- ── RLS + Function migrations (run these if DB already existed) ───────────────
+-- CREATE POLICY "Auth users insert own offers" ON public.offers FOR INSERT TO authenticated WITH CHECK (agency_id = auth.uid());
+--
+-- CREATE OR REPLACE FUNCTION select_offer_hotel(p_offer_id TEXT, p_hotel_name TEXT)
+-- RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
+--   UPDATE public.offers SET selected_hotel = p_hotel_name, status = 'selected' WHERE id = p_offer_id;
+-- $$;

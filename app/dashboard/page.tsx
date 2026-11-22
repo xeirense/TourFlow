@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { supabase as adminClient } from '@/lib/supabase';
 import CopyButton from './CopyButton';
 import LogoutButton from './LogoutButton';
 
@@ -38,14 +37,14 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/login');
 
-  // Fetch agency profile and offers in parallel
+  // Use SSR supabase client so JWT is forwarded → auth.uid() works in RLS
   const [profileResult, offersResult] = await Promise.all([
-    adminClient
+    supabase
       .from('agency_profiles')
       .select('id, agency_name, agency_logo, whatsapp')
       .eq('id', user.id)
       .single<AgencyProfile>(),
-    adminClient
+    supabase
       .from('offers')
       .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status')
       .eq('agency_id', user.id)

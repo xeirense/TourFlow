@@ -13,13 +13,12 @@ export async function POST(request: NextRequest) {
       // Atomically increment views_count via RPC
       await adminClient.rpc('increment_views', { offer_id: offerId });
     } else if (type === 'whatsapp_click') {
-      await adminClient
-        .from('offers')
-        .update({
-          selected_hotel: hotelName ?? null,
-          status: 'selected',
-        })
-        .eq('id', offerId);
+      // SECURITY DEFINER RPC — bypasses RLS, works without service key
+      const { error } = await adminClient.rpc('select_offer_hotel', {
+        p_offer_id:   offerId,
+        p_hotel_name: hotelName ?? '',
+      });
+      if (error) console.error('[events/whatsapp_click]', error.message);
     }
 
     return NextResponse.json({ ok: true });
