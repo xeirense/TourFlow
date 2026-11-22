@@ -10,6 +10,7 @@ export const supabase = createClient(url, key);
 // ─── Row type (matches Supabase snake_case columns) ───────────────────────────
 interface OfferRow {
   id: string;
+  agency_id: string | null;
   agency_name: string | null;
   agency_logo: string | null;
   manager_name: string | null;
@@ -22,11 +23,15 @@ interface OfferRow {
   includes: string[];
   hotels: Offer['hotels'];
   created_at: string;
+  views_count: number | null;
+  selected_hotel: string | null;
+  status: string | null;
 }
 
 function rowToOffer(row: OfferRow): Offer {
   return {
     id:               row.id,
+    agencyId:         row.agency_id    ?? undefined,
     agencyName:       row.agency_name  ?? undefined,
     agencyLogo:       row.agency_logo  ?? undefined,
     managerName:      row.manager_name ?? undefined,
@@ -39,6 +44,9 @@ function rowToOffer(row: OfferRow): Offer {
     includes:         row.includes,
     hotels:           row.hotels,
     createdAt:        row.created_at,
+    viewsCount:       row.views_count  ?? 0,
+    selectedHotel:    row.selected_hotel ?? undefined,
+    status:           row.status ?? 'pending',
   };
 }
 
@@ -47,6 +55,7 @@ export const supabaseDb = {
     const { data: row, error } = await supabase
       .from('offers')
       .insert({
+        agency_id:         data.agencyId         ?? null,
         agency_name:       data.agencyName       ?? null,
         agency_logo:       data.agencyLogo       ?? null,
         manager_name:      data.managerName      ?? null,

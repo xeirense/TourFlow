@@ -38,6 +38,7 @@ export const INCLUDES_META: { key: string; label: string; emoji: string }[] = [
 
 export interface Offer {
   id: string;
+  agencyId?: string;
   agencyName?: string;
   agencyLogo?: string;
   managerName?: string;
@@ -50,7 +51,10 @@ export interface Offer {
   includes: string[];
   hotels: Hotel[];
   createdAt: string;
+  viewsCount?: number;
+  selectedHotel?: string;
+  status?: string;
 }
 
 /** Shape accepted by POST /api/offers */
-export type OfferInput = Omit<Offer, 'id' | 'createdAt'>;
+export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status'>;

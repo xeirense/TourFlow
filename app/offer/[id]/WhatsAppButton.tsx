@@ -3,15 +3,31 @@
 export default function WhatsAppButton({
   waUrl,
   hotelName,
+  offerId,
 }: {
   waUrl: string;
   hotelName: string;
+  offerId: string;
 }) {
+  async function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+
+    // Track hotel selection before opening WhatsApp
+    fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ offerId, type: 'whatsapp_click', hotelName }),
+    }).catch(() => {});
+
+    // Small delay to allow the event to fire, then open WhatsApp
+    await new Promise(resolve => setTimeout(resolve, 400));
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <a
       href={waUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+      onClick={handleClick}
       aria-label={`${hotelName} oteli seçmək üçün WhatsApp-a keçin`}
       className="mt-1 flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 active:scale-[.98] text-white font-bold text-base shadow-md shadow-green-200 transition-all select-none"
     >

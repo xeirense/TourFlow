@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import type { Hotel, Offer } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import WhatsAppButton from './WhatsAppButton';
+import OfferViewTracker from './OfferViewTracker';
 
 // ─── Fallback resort image ────────────────────────────────────────────────────
 const FALLBACK_IMAGE =
@@ -23,6 +24,9 @@ export default async function OfferPage({
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
+      {/* Track page view */}
+      <OfferViewTracker offerId={offer.id} />
+
       {/* ── Hero header ──────────────────────────────────────────────────── */}
       <header className="relative bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 text-white overflow-hidden">
         {/* Decorative circles */}
@@ -108,6 +112,7 @@ export default async function OfferPage({
             hotel={hotel}
             index={i}
             offer={offer}
+            offerId={offer.id}
           />
         ))}
 
@@ -156,10 +161,12 @@ function HotelCard({
   hotel,
   index,
   offer,
+  offerId,
 }: {
   hotel: Hotel;
   index: number;
   offer: Offer;
+  offerId: string;
 }) {
   const imageSrc = hotel.imageUrl?.trim() || FALLBACK_IMAGE;
   const symbol   = CURRENCY_SYMBOLS[hotel.currency] ?? hotel.currency;
@@ -232,7 +239,7 @@ function HotelCard({
         </div>
 
         {/* WhatsApp CTA */}
-        <WhatsAppButton waUrl={waUrl} hotelName={hotel.name} />
+        <WhatsAppButton waUrl={waUrl} hotelName={hotel.name} offerId={offerId} />
       </div>
     </article>
   );

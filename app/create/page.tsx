@@ -1,17 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { Currency, MealType, Stars } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
-
-// ─── PIN gate ────────────────────────────────────────────────────────────────
-// Default PIN is "1234" – override via NEXT_PUBLIC_CREATE_PIN in .env.local
-const CORRECT_PIN =
-  typeof process !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_CREATE_PIN ?? '1234')
-    : '1234';
-
-const SESSION_KEY = 'tf_pin_ok';
 
 // ─── Hotel form state ─────────────────────────────────────────────────────────
 interface HotelDraft {
@@ -36,39 +30,29 @@ function formatDisplayDate(iso: string): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CreatePage() {
-  // ── PIN ──────────────────────────────────────────────────────────────────────
-  const [pinVerified, setPinVerified] = useState(false);
-  const [pinInput, setPinInput]       = useState('');
-  const [pinError, setPinError]       = useState(false);
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const duplicateId  = searchParams.get('from');
 
-  useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === '1') setPinVerified(true);
-  }, []);
-
-  function handlePinKey(digit: string) {
-    if (digit === '⌫') {
-      setPinInput(p => p.slice(0, -1));
-      setPinError(false);
-      return;
-    }
-    const next = pinInput + digit;
-    setPinInput(next);
-    if (next.length === 4) {
-      if (next === CORRECT_PIN) {
-        sessionStorage.setItem(SESSION_KEY, '1');
-        setPinVerified(true);
-      } else {
-        setPinError(true);
-        setTimeout(() => { setPinInput(''); setPinError(false); }, 700);
-      }
-    }
-  }
-
-  // ── Agency ───────────────────────────────────────────────────────────────────
+  // ── Agency (auto-filled from profile) ────────────────────────────────────────
   const [agencyName,      setAgencyName]      = useState('');
   const [agencyLogo,      setAgencyLogo]      = useState('');
   const [managerName,     setManagerName]     = useState('');
   const [managerWhatsapp, setManagerWhatsapp] = useState('');
+  const [profileLoaded,   setProfileLoaded]   = useState(false);
+
+  // Load agency profile on mount
+  useEffect(() => {
+    fetch('/api/auth/profile')
+      .then(r => r.json())
+      .then(p => {
+        if (p.agency_name)  setAgencyName(p.agency_name);
+        if (p.agency_logo)  setAgencyLogo(p.agency_logo);
+        if (p.whatsapp)     setManagerWhatsapp(p.whatsapp);
+        setProfileLoaded(true);
+      })
+      .catch(() => setProfileLoaded(true));
+  }, []);
 
   // ── Trip ─────────────────────────────────────────────────────────────────────
   const [clientName,  setClientName]  = useState('');
@@ -78,6 +62,9 @@ export default function CreatePage() {
   const [nights,      setNights]      = useState('');
   const [passengers,  setPassengers]  = useState('');
   const [includes,    setIncludes]    = useState<string[]>(['flight', 'hotel']);
+
+  // ── Hotels ───────────────────────────────────────────────────────────────────
+  const [hotels, setHotels] = useState<HotelDraft[]>([blankHotel()]);
 
   // Auto-calculate nights when both dates set
   useEffect(() => {
@@ -89,14 +76,37 @@ export default function CreatePage() {
     }
   }, [startDate, endDate]);
 
+  // Load duplicate offer data if ?from=ID is set
+  useEffect(() => {
+    if (!duplicateId) return;
+    fetch(`/api/offers/${duplicateId}`)
+      .then(r => r.json())
+      .then(offer => {
+        if (!offer || offer.error) return;
+        setDestination(offer.destination ?? '');
+        setPassengers(offer.passengers  ?? '');
+        setNights(String(offer.nights ?? ''));
+        setIncludes(offer.includes ?? ['flight', 'hotel']);
+        if (offer.hotels?.length) {
+          setHotels(offer.hotels.map((h: HotelDraft & { price: number }) => ({
+            name:     h.name,
+            stars:    h.stars,
+            mealType: h.mealType,
+            imageUrl: h.imageUrl ?? '',
+            price:    String(h.price),
+            currency: h.currency,
+            note:     h.note ?? '',
+          })));
+        }
+      })
+      .catch(() => {});
+  }, [duplicateId]);
+
   function toggleInclude(key: string) {
     setIncludes(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key],
     );
   }
-
-  // ── Hotels ───────────────────────────────────────────────────────────────────
-  const [hotels, setHotels] = useState<HotelDraft[]>([blankHotel()]);
 
   function updateHotel(i: number, patch: Partial<HotelDraft>) {
     setHotels(prev => prev.map((h, idx) => (idx === i ? { ...h, ...patch } : h)));
@@ -130,13 +140,7 @@ export default function CreatePage() {
       try {
         const res = await fetch('/api/offers', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // Send secret if configured (matches API_SECRET on server)
-            ...(process.env.NEXT_PUBLIC_API_SECRET
-              ? { 'x-api-secret': process.env.NEXT_PUBLIC_API_SECRET }
-              : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agencyName:      agencyName.trim()      || undefined,
             agencyLogo:      agencyLogo.trim()      || undefined,
@@ -198,54 +202,10 @@ export default function CreatePage() {
     setHotels([blankHotel()]);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // PIN screen
-  // ─────────────────────────────────────────────────────────────────────────────
-  if (!pinVerified) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-xs text-center">
-          <div className="text-4xl mb-3">✈️</div>
-          <h1 className="text-xl font-bold text-slate-800 mb-1">TourFlow</h1>
-          <p className="text-sm text-slate-500 mb-6">Menecer panelinə giriş</p>
-
-          {/* PIN dots */}
-          <div className="flex justify-center gap-3 mb-6">
-            {[0,1,2,3].map(i => (
-              <div
-                key={i}
-                className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
-                  pinInput.length > i
-                    ? pinError ? 'bg-red-500 border-red-500' : 'bg-blue-700 border-blue-700'
-                    : 'border-slate-300'
-                }`}
-              />
-            ))}
-          </div>
-
-          {pinError && (
-            <p className="text-xs text-red-500 mb-3 -mt-3">PIN yanlışdır</p>
-          )}
-
-          {/* Numpad */}
-          <div className="grid grid-cols-3 gap-3">
-            {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, idx) => (
-              d === '' ? (
-                <div key={idx} />
-              ) : (
-                <button
-                  key={idx}
-                  onClick={() => handlePinKey(d)}
-                  className="h-14 rounded-2xl bg-slate-100 hover:bg-blue-50 active:bg-blue-100 font-semibold text-slate-800 text-lg transition-colors select-none"
-                >
-                  {d}
-                </button>
-              )
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  async function handleLogout() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push('/login');
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -284,6 +244,13 @@ export default function CreatePage() {
               </span>
             </button>
 
+            <Link
+              href="/dashboard"
+              className="w-full py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium transition-colors text-center block"
+            >
+              📊 Dashboard-a qayıt
+            </Link>
+
             <button
               onClick={resetForm}
               className="w-full py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium transition-colors"
@@ -304,16 +271,34 @@ export default function CreatePage() {
       {/* Top bar */}
       <header className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-md">
         <span className="text-2xl">✈️</span>
-        <div>
+        <div className="flex-1">
           <h1 className="font-bold text-base leading-tight">TourFlow</h1>
           <p className="text-blue-200 text-xs">30 Saniyəlik Tur Təklifi</p>
         </div>
+        <Link
+          href="/dashboard"
+          className="text-xs text-blue-200 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+        >
+          📊 Dashboard
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="text-xs text-blue-200 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+        >
+          Çıxış
+        </button>
       </header>
 
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-5 pb-24">
 
         {/* ── 1. Agency / Manager ─────────────────────────────────────── */}
         <Section title="Agentlik / Menecer məlumatları" emoji="🏢">
+          {!profileLoaded && (
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+              Profil yüklənir...
+            </p>
+          )}
           <Field label="Agentliyin adı (opsional)">
             <input
               type="text"
