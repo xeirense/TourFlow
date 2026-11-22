@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
@@ -30,6 +30,18 @@ function formatDisplayDate(iso: string): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center">
+        <span className="inline-block w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <CreatePageContent />
+    </Suspense>
+  );
+}
+
+function CreatePageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const duplicateId  = searchParams.get('from');
