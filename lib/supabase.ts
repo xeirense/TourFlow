@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Offer, OfferInput } from './types';
+import type { Offer, OfferInput, CustomerResponse } from './types';
 
 // Prefer service key on the server (for inserts), fall back to anon key
 const url  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -26,6 +26,9 @@ interface OfferRow {
   views_count: number | null;
   selected_hotel: string | null;
   status: string | null;
+  expires_at: string | null;
+  customer_response: string | null;
+  last_viewed_at: string | null;
 }
 
 function rowToOffer(row: OfferRow): Offer {
@@ -44,9 +47,12 @@ function rowToOffer(row: OfferRow): Offer {
     includes:         row.includes,
     hotels:           row.hotels,
     createdAt:        row.created_at,
-    viewsCount:       row.views_count  ?? 0,
-    selectedHotel:    row.selected_hotel ?? undefined,
-    status:           row.status ?? 'pending',
+    viewsCount:        row.views_count       ?? 0,
+    selectedHotel:     row.selected_hotel    ?? undefined,
+    status:            row.status            ?? 'pending',
+    expiresAt:         row.expires_at        ?? undefined,
+    customerResponse:  (row.customer_response as CustomerResponse | null) ?? undefined,
+    lastViewedAt:      row.last_viewed_at    ?? undefined,
   };
 }
 

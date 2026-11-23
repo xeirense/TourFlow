@@ -19,6 +19,7 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 };
 
 export type PriceType = 'per_person' | 'total';
+export type CustomerResponse = 'interested' | 'not_interested' | 'price_high';
 
 export interface Hotel {
   name: string;
@@ -57,7 +58,10 @@ export interface Offer {
   viewsCount?: number;
   selectedHotel?: string;
   status?: string;
+  expiresAt?: string;
+  customerResponse?: CustomerResponse;
+  lastViewedAt?: string;
 }
 
 /** Shape accepted by POST /api/offers */
-export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status'>;
+export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status' | 'expiresAt' | 'customerResponse' | 'lastViewedAt'>;

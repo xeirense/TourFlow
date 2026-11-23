@@ -5,6 +5,7 @@ import type { Hotel, Offer } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import WhatsAppButton from './WhatsAppButton';
 import OfferViewTracker from './OfferViewTracker';
+import CustomerResponse from './CustomerResponse';
 
 // Cycling fallback images (beach, pool, luxury room, resort, city hotel)
 const FALLBACK_IMAGES = [
@@ -25,9 +26,35 @@ export default async function OfferPage({
 
   if (!offer) notFound();
 
+  // ── Expiry check ────────────────────────────────────────────────────────────
+  const isExpired = offer.expiresAt ? new Date(offer.expiresAt) < new Date() : false;
+
   const agencyLabel = offer.agencyName?.trim() || 'Səyahət Təklifi';
   const waNumber    = offer.managerWhatsapp.replace(/\D/g, '');
   const waUrl       = `https://wa.me/${waNumber}`;
+
+  if (isExpired) {
+    return (
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4">
+        <div className="max-w-sm w-full text-center space-y-5">
+          <div className="text-6xl">⌛</div>
+          <h1 className="text-white text-xl font-bold">Təklif müddəti bitib</h1>
+          <p className="text-slate-400 text-sm">
+            Bu təklif artıq aktiv deyil. Yeni qiymətlər üçün {agencyLabel} ilə
+            birbaşa əlaqə saxlayın.
+          </p>
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm transition-colors"
+          >
+            <WaIcon /> Menecer ilə əlaqə
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0F172A] font-sans">
@@ -114,11 +141,14 @@ export default async function OfferPage({
           />
         ))}
 
-        {/* 24h validity note */}
-        <div className="flex items-start gap-3 bg-amber-900/20 border border-amber-700/30 rounded-2xl px-4 py-3 mt-2">
+        {/* Customer feedback response */}
+        <CustomerResponse offerId={offer.id} />
+
+        {/* Validity note */}
+        <div className="flex items-start gap-3 bg-amber-900/20 border border-amber-700/30 rounded-2xl px-4 py-3">
           <span className="text-amber-400 text-base mt-0.5">⏰</span>
           <p className="text-amber-300 text-xs leading-relaxed">
-            Bu qiymətlər <strong>24 saat</strong> ərzindədir. Yerlər məhdud olduğundan təklif tez bitə bilər.
+            Qiymətlər dəyişə bilər. Yerlər məhdud olduğundan vaxtında müraciət etmənizi tövsiyə edirik.
           </p>
         </div>
 

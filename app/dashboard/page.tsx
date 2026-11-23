@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import CopyButton from './CopyButton';
 import LogoutButton from './LogoutButton';
+import DeleteOfferButton from './DeleteOfferButton';
 
 // ─── Row type from offers table ───────────────────────────────────────────────
 interface OfferRow {
@@ -17,6 +18,9 @@ interface OfferRow {
   views_count: number | null;
   selected_hotel: string | null;
   status: string | null;
+  customer_response: string | null;
+  expires_at: string | null;
+  last_viewed_at: string | null;
 }
 
 // ─── Profile type ─────────────────────────────────────────────────────────────
@@ -47,7 +51,7 @@ export default async function DashboardPage() {
       .single<AgencyProfile>(),
     supabase
       .from('offers')
-      .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status')
+      .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status, customer_response, expires_at, last_viewed_at')
       .eq('agency_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100),
@@ -122,8 +126,12 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-slate-50">
               {offers.map(offer => {
-                const offerUrl = `${siteUrl}/offer/${offer.id}`;
+                const offerUrl   = `${siteUrl}/offer/${offer.id}`;
                 const isSelected = offer.status === 'selected';
+                const isExpired  = offer.expires_at ? new Date(offer.expires_at) < new Date() : false;
+                const expiresInDays = offer.expires_at
+                  ? Math.ceil((new Date(offer.expires_at).getTime() - Date.now()) / 86_400_000)
+                  : null;
 
                 return (
                   <li key={offer.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
@@ -141,6 +149,16 @@ export default async function DashboardPage() {
                           <span className="text-xs text-slate-400">
                             ({offer.hotels?.length ?? 0} otel)
                           </span>
+                          {/* Expiry badge */}
+                          {isExpired ? (
+                            <span className="text-xs bg-red-50 text-red-500 border border-red-100 px-2 py-0.5 rounded-full font-medium">
+                              ⌛ Müddəti bitib
+                            </span>
+                          ) : expiresInDays !== null && expiresInDays <= 7 ? (
+                            <span className="text-xs bg-amber-50 text-amber-600 border border-amber-100 px-2 py-0.5 rounded-full font-medium">
+                              ⏰ {expiresInDays}g qalıb
+                            </span>
+                          ) : null}
                         </div>
 
                         {/* Date & creation time */}
@@ -151,11 +169,28 @@ export default async function DashboardPage() {
                           <span className="text-xs text-slate-400">
                             {formatDate(offer.created_at)}
                           </span>
+                          {offer.last_viewed_at && (
+                            <span className="text-xs text-slate-400">
+                              Son baxış: {formatDate(offer.last_viewed_at)}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Analytics */}
-                        <div className="flex items-center gap-3 mt-2">
-                          {isSelected ? (
+                        {/* Status + response badges */}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {offer.customer_response === 'interested' ? (
+                            <span className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 border border-teal-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                              ✅ Maraqlandı
+                            </span>
+                          ) : offer.customer_response === 'price_high' ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                              💬 Qiymət yüksəkdir
+                            </span>
+                          ) : offer.customer_response === 'not_interested' ? (
+                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                              ❌ Maraqlanmadı
+                            </span>
+                          ) : isSelected ? (
                             <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               ✅ Seçilib: {offer.selected_hotel}
                             </span>
@@ -172,22 +207,25 @@ export default async function DashboardPage() {
                       </div>
 
                       {/* Right: action buttons */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <CopyButton url={offerUrl} />
-                        <a
-                          href={offerUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
-                        >
-                          👁 Bax
-                        </a>
-                        <Link
-                          href={`/create?from=${offer.id}`}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
-                        >
-                          📋 Kopyala
-                        </Link>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <CopyButton url={offerUrl} />
+                          <a
+                            href={offerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
+                          >
+                            👁 Bax
+                          </a>
+                          <Link
+                            href={`/create?from=${offer.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
+                          >
+                            📋 Kopyala
+                          </Link>
+                        </div>
+                        <DeleteOfferButton offerId={offer.id} />
                       </div>
                     </div>
                   </li>

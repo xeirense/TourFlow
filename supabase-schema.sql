@@ -128,3 +128,43 @@ CREATE INDEX offers_agency_id_idx  ON public.offers (agency_id);
 -- RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
 --   UPDATE public.offers SET selected_hotel = p_hotel_name, status = 'selected' WHERE id = p_offer_id;
 -- $$;
+
+-- ============================================================
+--  V2 MIGRATION – Customer responses, delete, notifications
+--  Run this block if you already have the v1 table
+-- ============================================================
+
+-- New columns
+ALTER TABLE public.offers
+  ADD COLUMN IF NOT EXISTS customer_response TEXT         DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS last_viewed_at    TIMESTAMPTZ  DEFAULT NULL;
+
+-- DELETE policy: agencies can delete their own offers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'offers' AND policyname = 'Users delete own offers'
+  ) THEN
+    CREATE POLICY "Users delete own offers"
+      ON public.offers FOR DELETE TO authenticated
+      USING (agency_id = auth.uid());
+  END IF;
+END $$;
+
+-- Update increment_views to also track last_viewed_at
+CREATE OR REPLACE FUNCTION increment_views(offer_id TEXT)
+RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
+  UPDATE public.offers
+  SET views_count    = views_count + 1,
+      last_viewed_at = NOW()
+  WHERE id = offer_id;
+$$;
+
+-- Customer feedback response (no auth needed — called from public offer page)
+CREATE OR REPLACE FUNCTION set_customer_response(p_offer_id TEXT, p_response TEXT)
+RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
+  UPDATE public.offers
+  SET customer_response = p_response
+  WHERE id = p_offer_id;
+$$;

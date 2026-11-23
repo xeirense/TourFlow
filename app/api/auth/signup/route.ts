@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { supabase as adminClient } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +21,9 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+    // Use SSR client (carries user JWT from just-completed signUp → auth.uid() works in RLS)
     if (data.user) {
-      await adminClient.from('agency_profiles').upsert({
+      await supabase.from('agency_profiles').upsert({
         id:          data.user.id,
         agency_name: agencyName?.trim() || null,
         agency_logo: agencyLogo?.trim() || null,

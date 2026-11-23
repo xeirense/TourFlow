@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { supabase as adminClient } from '@/lib/supabase';
 
 export async function GET() {
   try {
@@ -9,7 +8,8 @@ export async function GET() {
 
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
 
-    const { data: profile } = await adminClient
+    // Use SSR client (carries user JWT → auth.uid() works in RLS)
+    const { data: profile } = await supabase
       .from('agency_profiles')
       .select()
       .eq('id', user.id)
@@ -31,7 +31,8 @@ export async function PUT(request: NextRequest) {
 
     const { agencyName, agencyLogo, whatsapp } = await request.json();
 
-    await adminClient.from('agency_profiles').upsert({
+    // Use SSR client (carries user JWT → auth.uid() works in RLS)
+    await supabase.from('agency_profiles').upsert({
       id:          user.id,
       agency_name: agencyName?.trim() || null,
       agency_logo: agencyLogo?.trim() || null,

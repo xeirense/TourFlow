@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
     if (!body.hotels?.length) {
       return NextResponse.json({ error: 'Ən azı bir otel əlavə edin' }, { status: 400 });
     }
+    if (body.hotels.length > 5) {
+      return NextResponse.json({ error: 'Maksimum 5 otel əlavə edilə bilər' }, { status: 400 });
+    }
 
     // ── Insert using SSR client (carries user JWT → RLS auth.uid() works) ─────
     const { data: row, error } = await supabase

@@ -29,5 +29,7 @@ export const config = {
     '/create/:path*',
     '/login',
     '/register',
+    '/forgot-password',
+    '/reset-password',
   ],
 };

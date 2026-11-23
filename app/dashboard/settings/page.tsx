@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function SettingsPage() {
@@ -11,13 +12,18 @@ export default function SettingsPage() {
   const [agencyLogo, setAgencyLogo] = useState('');
   const [whatsapp,   setWhatsapp]   = useState('');
   const [loading,    setLoading]    = useState(false);
+  const [uploading,  setUploading]  = useState(false);
   const [saved,      setSaved]      = useState(false);
   const [error,      setError]      = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Load current profile
   useEffect(() => {
     fetch('/api/auth/profile')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('unauthenticated');
+        return r.json();
+      })
       .then(p => {
         if (p.agency_name) setAgencyName(p.agency_name);
         if (p.agency_logo) setAgencyLogo(p.agency_logo);
@@ -25,6 +31,28 @@ export default function SettingsPage() {
       })
       .catch(() => {});
   }, []);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (res.ok) {
+        const { url } = await res.json();
+        setAgencyLogo(url);
+      } else {
+        const { error: msg } = await res.json().catch(() => ({}));
+        setError(msg ?? 'Şəkil yüklənmədi');
+      }
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,8 +91,9 @@ export default function SettingsPage() {
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6">
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
 
+          {/* ── Agency name ─────────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               Agentlik adı
@@ -78,6 +107,7 @@ export default function SettingsPage() {
             />
           </div>
 
+          {/* ── WhatsApp ─────────────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               WhatsApp nömrəsi
@@ -91,16 +121,58 @@ export default function SettingsPage() {
             />
           </div>
 
+          {/* ── Logo upload ──────────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Loqo URL-i (opsional)
+              Agentlik Loqosu
             </label>
+
+            {/* Preview */}
+            {agencyLogo && (
+              <div className="mb-3 flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <Image
+                  src={agencyLogo}
+                  alt="Loqo"
+                  width={48}
+                  height={48}
+                  className="rounded-lg object-contain"
+                  unoptimized
+                />
+                <p className="flex-1 text-xs text-slate-400 truncate">{agencyLogo}</p>
+                <button
+                  type="button"
+                  onClick={() => setAgencyLogo('')}
+                  className="text-slate-400 hover:text-red-500 text-xs font-semibold transition-colors"
+                >
+                  Sil
+                </button>
+              </div>
+            )}
+
+            {/* Upload button */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-teal-400 text-slate-500 hover:text-teal-600 text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {uploading ? '⏳ Yüklənir...' : '📁 Şəkil seç (maks. 5MB)'}
+            </button>
+
+            {/* Manual URL fallback */}
             <input
               type="url"
               value={agencyLogo}
               onChange={e => setAgencyLogo(e.target.value)}
-              placeholder="https://..."
-              className={inputCls}
+              placeholder="ya URL yapışdırın: https://..."
+              className={`${inputCls} mt-2 text-xs`}
             />
           </div>
 
@@ -112,7 +184,7 @@ export default function SettingsPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-colors"
           >
             {saved ? '✓ Yadda saxlandı!' : loading ? 'Yüklənir...' : 'Yadda saxla'}

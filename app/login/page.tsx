@@ -101,12 +101,19 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-400 mt-6">
-          Hesabınız yoxdur?{' '}
-          <Link href="/register" className="text-teal-400 font-semibold hover:underline">
-            Qeydiyyatdan keçin
-          </Link>
-        </p>
+        <div className="mt-6 space-y-2 text-center">
+          <p className="text-sm text-slate-400">
+            Hesabınız yoxdur?{' '}
+            <Link href="/register" className="text-teal-400 font-semibold hover:underline">
+              Qeydiyyatdan keçin
+            </Link>
+          </p>
+          <p className="text-sm">
+            <Link href="/forgot-password" className="text-slate-500 hover:text-slate-300 transition-colors">
+              Şifrəni unutmusunuz?
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

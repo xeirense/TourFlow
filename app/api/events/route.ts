@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase as adminClient } from '@/lib/supabase';
+import { sendNotification } from '@/lib/email';
+
+async function getManagerEmail(agencyId: string): Promise<string | null> {
+  try {
+    const { data } = await adminClient.auth.admin.getUserById(agencyId);
+    return data?.user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +20,37 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'view') {
-      // Atomically increment views_count via RPC
+      // Atomically increment views_count + set last_viewed_at via RPC
       await adminClient.rpc('increment_views', { offer_id: offerId });
+
+      // First-view notification: query after increment — views_count === 1 means first open
+      void (async () => {
+        try {
+          const { data: offer } = await adminClient
+            .from('offers')
+            .select('views_count, client_name, destination, agency_id')
+            .eq('id', offerId)
+            .single();
+
+          if (offer?.views_count !== 1 || !offer?.agency_id) return;
+
+          const email = await getManagerEmail(offer.agency_id);
+          if (!email) return;
+
+          await sendNotification({
+            to: email,
+            subject: `TourFlow: ${offer.client_name} təklifinizə baxdı`,
+            body: `
+              <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
+              göndərdiyiniz təklifi <strong>ilk dəfə açdı</strong>.</p>
+              <p style="color:#64748b;font-size:13px">Dashboard-da cavabı izləyin.</p>
+            `,
+          });
+        } catch (err) {
+          console.error('[events/view/notify]', err);
+        }
+      })();
+
     } else if (type === 'whatsapp_click') {
       // SECURITY DEFINER RPC — bypasses RLS, works without service key
       const { error } = await adminClient.rpc('select_offer_hotel', {
@@ -19,6 +58,37 @@ export async function POST(request: NextRequest) {
         p_hotel_name: hotelName ?? '',
       });
       if (error) console.error('[events/whatsapp_click]', error.message);
+
+      // Hot-lead notification: customer clicked WhatsApp for a specific hotel
+      void (async () => {
+        try {
+          const { data: offer } = await adminClient
+            .from('offers')
+            .select('client_name, destination, agency_id')
+            .eq('id', offerId)
+            .single();
+
+          if (!offer?.agency_id) return;
+
+          const email = await getManagerEmail(offer.agency_id);
+          if (!email) return;
+
+          await sendNotification({
+            to: email,
+            subject: `🔥 TourFlow: ${offer.client_name} WhatsApp-a keçdi!`,
+            body: `
+              <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
+              <strong>${hotelName ?? 'bir oteli'}</strong> seçib WhatsApp-a keçdi.</p>
+              <p style="font-size:18px;font-weight:700;color:#0d9488;margin:12px 0">
+                Bu isti bir potensial müştəridir! 🔥
+              </p>
+              <p style="color:#64748b;font-size:13px">Mümkün qədər tez cavab verin.</p>
+            `,
+          });
+        } catch (err) {
+          console.error('[events/whatsapp_click/notify]', err);
+        }
+      })();
     }
 
     return NextResponse.json({ ok: true });
