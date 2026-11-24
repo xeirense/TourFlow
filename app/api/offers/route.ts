@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { supabase as adminClient } from '@/lib/supabase';
 import type { OfferInput } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Auth: use SSR client so JWT is forwarded (auth.uid() works in RLS) ─────
+    // ── Auth check via SSR client (reads JWT cookie) ───────────────────────────
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -31,8 +32,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Maksimum 5 otel əlavə edilə bilər' }, { status: 400 });
     }
 
-    // ── Insert using SSR client (carries user JWT → RLS auth.uid() works) ─────
-    const { data: row, error } = await supabase
+    // ── Insert via service key (bypasses RLS — auth already verified above) ────
+    const { data: row, error } = await adminClient
       .from('offers')
       .insert({
         agency_id:        user.id,
