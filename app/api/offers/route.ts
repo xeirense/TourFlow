@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import type { OfferInput } from '@/lib/types';
-
-// Fresh service-key client — bypasses RLS entirely
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(url, key, { auth: { persistSession: false } });
-}
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Auth check via SSR client (reads JWT cookie) ───────────────────────────
+    // ── Auth check ─────────────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -39,33 +31,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Maksimum 5 otel əlavə edilə bilər' }, { status: 400 });
     }
 
-    // ── Insert via fresh service-key client (bypasses RLS) ────────────────────
-    const admin = getAdminClient();
-    const { data: row, error } = await admin
-      .from('offers')
-      .insert({
-        agency_id:        user.id,
-        agency_name:      body.agencyName      ?? null,
-        agency_logo:      body.agencyLogo      ?? null,
-        manager_name:     body.managerName     ?? null,
-        manager_whatsapp: body.managerWhatsapp,
-        client_name:      body.clientName,
-        destination:      body.destination,
-        date_range:       body.dateRange       ?? '',
-        nights:           body.nights          ?? 0,
-        passengers:       body.passengers      ?? '',
-        includes:         body.includes        ?? [],
-        hotels:           body.hotels,
-      })
-      .select('id')
-      .single();
+    // ── Insert via SECURITY DEFINER RPC (bypasses RLS, like increment_views) ──
+    const { data: offerId, error } = await supabase.rpc('create_offer', {
+      p_agency_id:        user.id,
+      p_agency_name:      body.agencyName      ?? null,
+      p_agency_logo:      body.agencyLogo      ?? null,
+      p_manager_name:     body.managerName     ?? null,
+      p_manager_whatsapp: body.managerWhatsapp,
+      p_client_name:      body.clientName,
+      p_destination:      body.destination,
+      p_date_range:       body.dateRange       ?? '',
+      p_nights:           body.nights          ?? 0,
+      p_passengers:       body.passengers      ?? '',
+      p_includes:         body.includes        ?? [],
+      p_hotels:           body.hotels,
+    });
 
     if (error) {
-      console.error('[POST /api/offers] DB error:', error.message);
+      console.error('[POST /api/offers] RPC error:', error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ id: row!.id }, { status: 201 });
+    return NextResponse.json({ id: offerId }, { status: 201 });
   } catch (err) {
     console.error('[POST /api/offers]', err);
     return NextResponse.json({ error: 'Serverdə xəta baş verdi' }, { status: 500 });
