@@ -12,6 +12,7 @@ build/
 
 # Environment variables
 .env*.local
+.env.vercel
 
 # Mock DB data (dev only)
 .mock-offers.json
