@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { supabase as adminClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import type { OfferInput } from '@/lib/types';
+
+// Fresh service-key client — bypasses RLS entirely
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,8 +39,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Maksimum 5 otel əlavə edilə bilər' }, { status: 400 });
     }
 
-    // ── Insert via service key (bypasses RLS — auth already verified above) ────
-    const { data: row, error } = await adminClient
+    // ── Insert via fresh service-key client (bypasses RLS) ────────────────────
+    const admin = getAdminClient();
+    const { data: row, error } = await admin
       .from('offers')
       .insert({
         agency_id:        user.id,
