@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import LoadingOverlay from '@/app/_components/LoadingOverlay';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const [whatsapp,   setWhatsapp]   = useState('');
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(false);
+  const [success,    setSuccess]    = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +44,7 @@ export default function RegisterPage() {
           body: JSON.stringify({ agencyName, whatsapp }),
         });
       }
+      setSuccess(true);
       router.push('/dashboard');
       router.refresh();
     } catch {
@@ -49,6 +52,10 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (success) {
+    return <LoadingOverlay message="Hesabınız hazırlanır..." />;
   }
 
   const inputCls =
@@ -60,10 +67,10 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10">
             <span className="text-xl font-black text-white tracking-tighter">TF</span>
           </div>
-          <h1 className="text-xl font-extrabold text-white">TourFlow</h1>
+          <h1 className="text-xl font-extrabold text-white mt-4">TourFlow</h1>
           <p className="text-slate-400 text-sm mt-1">Agentlik hesabınızı yaradın</p>
         </div>
 
@@ -142,15 +149,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-colors"
+            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-all active:scale-[.98]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Qeydiyyat olunur...
+                Hesab yaradılır...
               </span>
             ) : (
-              'Qeydiyyatdan keç'
+              'Qeydiyyatdan keç →'
             )}
           </button>
         </form>
