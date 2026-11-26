@@ -10,8 +10,11 @@ export default function AnalyticsLoading() {
         {/* Period filter skeleton */}
         <div className="flex gap-2">
           {[80, 96, 80, 72].map((w, i) => (
-            <div key={i} className={`h-9 w-${w} rounded-xl bg-white border border-slate-200 animate-pulse`}
-              style={{ width: w }} />
+            <div
+              key={i}
+              className="h-9 rounded-xl bg-white border border-slate-200 animate-pulse"
+              style={{ width: w }}
+            />
           ))}
         </div>
 
@@ -22,6 +25,20 @@ export default function AnalyticsLoading() {
               <div className="w-10 h-7 rounded-lg bg-slate-100 animate-pulse mx-auto" />
               <div className="w-24 h-3 rounded-lg bg-slate-100 animate-pulse mx-auto" />
               <div className="w-16 h-3 rounded-lg bg-slate-100 animate-pulse mx-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* Funnel skeleton */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+          <div className="w-32 h-4 rounded-lg bg-slate-100 animate-pulse" />
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="w-48 h-3 rounded-lg bg-slate-100 animate-pulse" />
+                <div className="h-2 w-full rounded-full bg-slate-100 animate-pulse" />
+              </div>
             </div>
           ))}
         </div>
@@ -40,6 +57,27 @@ export default function AnalyticsLoading() {
           ))}
         </div>
 
+        {/* Hotel preferences skeleton */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+          <div className="w-40 h-4 rounded-lg bg-slate-100 animate-pulse" />
+          <div className="grid grid-cols-2 gap-6">
+            {[1, 2].map(col => (
+              <div key={col} className="space-y-3">
+                <div className="w-24 h-3 rounded-lg bg-slate-100 animate-pulse" />
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <div className="w-20 h-3 rounded-lg bg-slate-100 animate-pulse" />
+                      <div className="w-10 h-3 rounded-lg bg-slate-100 animate-pulse" />
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-100 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Destinations skeleton */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <div className="w-40 h-4 rounded-lg bg-slate-100 animate-pulse" />
@@ -53,6 +91,7 @@ export default function AnalyticsLoading() {
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );
