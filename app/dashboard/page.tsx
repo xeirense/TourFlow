@@ -6,6 +6,14 @@ import CopyButton from './CopyButton';
 import LogoutButton from './LogoutButton';
 import DeleteOfferButton from './DeleteOfferButton';
 import WhatsAppMsgButton from './WhatsAppMsgButton';
+import {
+  PLANS,
+  getEffectivePlan,
+  getTrialDaysLeft,
+  DEFAULT_PLAN_DATA,
+  type ProfilePlanData,
+  type PlanTier,
+} from '@/lib/planConfig';
 import type { ReactNode } from 'react';
 
 // ─── Row type from offers table ───────────────────────────────────────────────
@@ -36,7 +44,7 @@ interface TeamMember {
 }
 
 // ─── Profile type ─────────────────────────────────────────────────────────────
-interface AgencyProfile {
+interface AgencyProfile extends ProfilePlanData {
   id: string;
   agency_name: string | null;
   agency_logo: string | null;
@@ -84,9 +92,9 @@ export default async function DashboardPage() {
   const [profileResult, teamResult] = await Promise.all([
     supabase
       .from('agency_profiles')
-      .select('id, agency_name, agency_logo, whatsapp')
+      .select('id, agency_name, agency_logo, whatsapp, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
       .eq('id', user.id)
-      .single<AgencyProfile>(),
+      .maybeSingle<AgencyProfile>(),
     supabase
       .from('agency_members')
       .select('member_user_id, invited_email, display_name, status')
@@ -112,6 +120,15 @@ export default async function DashboardPage() {
   const agencyLabel   = profile?.agency_name ?? user.email ?? 'Agentlik';
   const totalViews    = offers.reduce((s, o) => s + (o.views_count ?? 0), 0);
   const totalSelected = offers.filter(o => o.status === 'selected').length;
+
+  // Plan status
+  const planData      = profile ?? DEFAULT_PLAN_DATA;
+  const effectiveTier = getEffectivePlan(planData);
+  const planInfo      = PLANS[effectiveTier];
+  const trialDaysLeft = getTrialDaysLeft(planData.trial_ends_at);
+  const isTrialing    = planData.subscription_status === 'trialing' && trialDaysLeft > 0;
+  const monthlyUsed   = planData.monthly_offers_used ?? 0;
+  const monthlyLimit  = planInfo.limits.monthlyOfferLimit;
 
   const reqHeaders = await headers();
   const host    = reqHeaders.get('host') ?? '';
@@ -172,6 +189,16 @@ export default async function DashboardPage() {
           <StatCard label="Ümumi Baxış"  value={totalViews}     emoji="👁" />
           <StatCard label="Seçilmiş"     value={totalSelected}  emoji="✅" />
         </div>
+
+        {/* ── Plan status banner ───────────────────────────────────────── */}
+        <PlanBanner
+          planName={planInfo.name}
+          tier={effectiveTier}
+          isTrialing={isTrialing}
+          trialDaysLeft={trialDaysLeft}
+          monthlyUsed={monthlyUsed}
+          monthlyLimit={monthlyLimit}
+        />
 
         {/* ── Analytics banner ─────────────────────────────────────────── */}
         <Link
@@ -345,6 +372,70 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Plan status banner ────────────────────────────────────────────────────────
+function PlanBanner({
+  planName,
+  tier,
+  isTrialing,
+  trialDaysLeft,
+  monthlyUsed,
+  monthlyLimit,
+}: {
+  planName:      string;
+  tier:          PlanTier;
+  isTrialing:    boolean;
+  trialDaysLeft: number;
+  monthlyUsed:   number;
+  monthlyLimit:  number | null;
+}) {
+  const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000';
+  const waHref = `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow planımı yüksəltmək istəyirəm.')}`;
+
+  // Don't show banner for active growth/pro/enterprise (only show for starter or trialing)
+  if (!isTrialing && tier !== 'starter') return null;
+
+  const usagePct = monthlyLimit ? Math.min(100, Math.round((monthlyUsed / monthlyLimit) * 100)) : 0;
+  const isNearLimit = monthlyLimit && monthlyUsed >= monthlyLimit * 0.8;
+
+  return (
+    <div className={`rounded-2xl border px-5 py-4 flex items-center gap-4 ${
+      isTrialing
+        ? 'bg-teal-50 border-teal-100'
+        : isNearLimit
+        ? 'bg-amber-50 border-amber-200'
+        : 'bg-slate-50 border-slate-200'
+    }`}>
+      <div className="flex-1 min-w-0">
+        {isTrialing ? (
+          <p className="text-sm font-bold text-teal-800">
+            {planName} — Pulsuz Sınaq: <span className="text-teal-600">{trialDaysLeft} gün qalıb</span>
+          </p>
+        ) : (
+          <p className={`text-sm font-bold ${isNearLimit ? 'text-amber-800' : 'text-slate-700'}`}>
+            {planName} Planı — {monthlyUsed} / {monthlyLimit} aylıq təklif istifadə olunub
+          </p>
+        )}
+        {monthlyLimit && (
+          <div className="mt-2 h-1.5 w-full max-w-xs bg-white/70 rounded-full overflow-hidden border border-black/5">
+            <div
+              className={`h-full rounded-full transition-all ${usagePct >= 80 ? 'bg-amber-500' : 'bg-teal-500'}`}
+              style={{ width: `${usagePct}%` }}
+            />
+          </div>
+        )}
+      </div>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex-shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white transition-colors whitespace-nowrap"
+      >
+        Planı Yüksəlt ↗
+      </a>
     </div>
   );
 }

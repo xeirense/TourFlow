@@ -1,6 +1,13 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import {
+  PLANS,
+  getEffectivePlan,
+  DEFAULT_PLAN_DATA,
+  type ProfilePlanData,
+} from '@/lib/planConfig';
+import LockedCard from '@/app/components/LockedCard';
 import type { Hotel } from '@/lib/types';
 
 // ─── Meal / currency label maps ───────────────────────────────────────────────
@@ -74,6 +81,17 @@ export default async function AnalyticsPage({
   const period: PeriodKey =
     rawPeriod === '7' || rawPeriod === '30' || rawPeriod === '365' || rawPeriod === 'all'
       ? rawPeriod : '30';
+
+  // ── Plan check ─────────────────────────────────────────────────────────────
+  const { data: profileData } = await supabase
+    .from('agency_profiles')
+    .select('plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
+    .eq('id', user.id)
+    .maybeSingle<ProfilePlanData>();
+
+  const effectiveTier  = getEffectivePlan(profileData ?? DEFAULT_PLAN_DATA);
+  const planFeatures   = PLANS[effectiveTier].features;
+  const hasFullAnalytics = planFeatures.fullAnalytics;
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   let query = supabase
@@ -300,63 +318,75 @@ export default async function AnalyticsPage({
         )}
 
         {/* ── Conversion Funnel ─────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <h2 className="font-bold text-slate-800 mb-1">Satış Hunisi</h2>
-          <p className="text-xs text-slate-400 mb-4">Hər addımda neçə müştəri qaldı</p>
-          {totalOffers === 0 ? (
-            <p className="text-slate-400 text-sm">Bu dövrdə məlumat yoxdur.</p>
-          ) : (
-            <div className="space-y-4">
-              <FunnelStep step={1} label="Göndərilən Təklif"        count={totalOffers}   total={totalOffers} color="bg-slate-400"  />
-              <FunnelStep step={2} label="Baxılmış (≥1 baxış)"      count={viewed}        total={totalOffers} color="bg-blue-400"   />
-              <FunnelStep step={3} label="Rəy Bildirmiş"            count={responded}     total={totalOffers} color="bg-teal-500"   />
-              <FunnelStep step={4} label="WhatsApp Seçimi (Bağlandı)" count={totalSelected} total={totalOffers} color="bg-green-500" />
-              {avgHoursToView !== null && (
-                <p className="text-xs text-slate-400 pt-1 border-t border-slate-50">
-                  ⏱ Ortalama ilk baxış vaxtı:{' '}
-                  <span className="font-semibold text-slate-600">{avgHoursToView} saat</span>
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        {hasFullAnalytics ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <h2 className="font-bold text-slate-800 mb-1">Satış Hunisi</h2>
+            <p className="text-xs text-slate-400 mb-4">Hər addımda neçə müştəri qaldı</p>
+            {totalOffers === 0 ? (
+              <p className="text-slate-400 text-sm">Bu dövrdə məlumat yoxdur.</p>
+            ) : (
+              <div className="space-y-4">
+                <FunnelStep step={1} label="Göndərilən Təklif"          count={totalOffers}   total={totalOffers} color="bg-slate-400"  />
+                <FunnelStep step={2} label="Baxılmış (≥1 baxış)"        count={viewed}        total={totalOffers} color="bg-blue-400"   />
+                <FunnelStep step={3} label="Rəy Bildirmiş"              count={responded}     total={totalOffers} color="bg-teal-500"   />
+                <FunnelStep step={4} label="WhatsApp Seçimi (Bağlandı)" count={totalSelected} total={totalOffers} color="bg-green-500" />
+                {avgHoursToView !== null && (
+                  <p className="text-xs text-slate-400 pt-1 border-t border-slate-50">
+                    ⏱ Ortalama ilk baxış vaxtı:{' '}
+                    <span className="font-semibold text-slate-600">{avgHoursToView} saat</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <LockedCard requiredPlan="growth" title="Satış Hunisi" heightCls="h-48" />
+        )}
 
         {/* ── Revenue Pipeline ──────────────────────────────────────────── */}
-        {pipelineCount > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h2 className="font-bold text-slate-800 mb-1">Gəlir Boru Xətti</h2>
-            <p className="text-xs text-slate-400 mb-4">
-              {pipelineCount} seçilmiş təklifin ümumi dəyəri
-            </p>
-            <div className="grid grid-cols-3 gap-4">
-              {Object.entries(pipeline).map(([currency, total]) =>
-                total > 0 ? (
-                  <div key={currency} className="text-center bg-teal-50 border border-teal-100 rounded-2xl p-4">
-                    <p className="text-xl font-extrabold text-teal-700">
-                      {CURRENCY_SYMBOLS[currency]}{total.toLocaleString('az-AZ')}
-                    </p>
-                    <p className="text-xs text-teal-600 font-semibold mt-0.5">{currency}</p>
-                  </div>
-                ) : null,
-              )}
+        {hasFullAnalytics ? (
+          pipelineCount > 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <h2 className="font-bold text-slate-800 mb-1">Gəlir Boru Xətti</h2>
+              <p className="text-xs text-slate-400 mb-4">
+                {pipelineCount} seçilmiş təklifin ümumi dəyəri
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                {Object.entries(pipeline).map(([currency, total]) =>
+                  total > 0 ? (
+                    <div key={currency} className="text-center bg-teal-50 border border-teal-100 rounded-2xl p-4">
+                      <p className="text-xl font-extrabold text-teal-700">
+                        {CURRENCY_SYMBOLS[currency]}{total.toLocaleString('az-AZ')}
+                      </p>
+                      <p className="text-xs text-teal-600 font-semibold mt-0.5">{currency}</p>
+                    </div>
+                  ) : null,
+                )}
+              </div>
             </div>
-          </div>
+          ) : null
+        ) : (
+          <LockedCard requiredPlan="growth" title="Gəlir Boru Xətti" heightCls="h-36" />
         )}
 
         {/* ── Customer Response Breakdown ───────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <h2 className="font-bold text-slate-800 mb-4">Müştəri Rəyləri</h2>
-          {(interested + priceHigh + notInterested) === 0 ? (
-            <p className="text-slate-400 text-sm">Bu dövrdə heç bir müştəri rəy bildiribməyib.</p>
-          ) : (
-            <div className="space-y-3.5">
-              <ResponseRow label="✅ Maraqlandı"       count={interested}    total={totalOffers} color="bg-teal-500"  />
-              <ResponseRow label="💬 Qiymət yüksəkdir" count={priceHigh}     total={totalOffers} color="bg-amber-400" />
-              <ResponseRow label="❌ Maraqlanmadı"     count={notInterested} total={totalOffers} color="bg-red-400"   />
-              <ResponseRow label="⏳ Cavabsız"         count={noResponse}    total={totalOffers} color="bg-slate-200" />
-            </div>
-          )}
-        </div>
+        {hasFullAnalytics ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <h2 className="font-bold text-slate-800 mb-4">Müştəri Rəyləri</h2>
+            {(interested + priceHigh + notInterested) === 0 ? (
+              <p className="text-slate-400 text-sm">Bu dövrdə heç bir müştəri rəy bildiribməyib.</p>
+            ) : (
+              <div className="space-y-3.5">
+                <ResponseRow label="✅ Maraqlandı"       count={interested}    total={totalOffers} color="bg-teal-500"  />
+                <ResponseRow label="💬 Qiymət yüksəkdir" count={priceHigh}     total={totalOffers} color="bg-amber-400" />
+                <ResponseRow label="❌ Maraqlanmadı"     count={notInterested} total={totalOffers} color="bg-red-400"   />
+                <ResponseRow label="⏳ Cavabsız"         count={noResponse}    total={totalOffers} color="bg-slate-200" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <LockedCard requiredPlan="growth" title="Müştəri Rəyləri Analizi" heightCls="h-40" />
+        )}
 
         {/* ── Hotel Preferences ─────────────────────────────────────────── */}
         {totalHotels > 0 && (

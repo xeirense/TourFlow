@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
+import { PLANS, type PlanTier } from '@/lib/planConfig';
 
 export const metadata = {
   title: 'TourFlow — Azərbaycanda Tur Agentliyi üçün Rəqəmsal Platforma',
@@ -8,10 +9,14 @@ export const metadata = {
     'Hər müştəriyə 30 saniyədə brendlənmiş, peşəkar tur təklifi göndərin. Real vaxt analitika. WhatsApp inteqrasiyası. Müştəri rəyləri.',
 };
 
+const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000';
+
 export default async function LandingPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect('/dashboard');
+
+  const enterpriseWa = `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Enterprise paketi haqqında məlumat almaq istəyirəm.')}`;
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -27,7 +32,13 @@ export default async function LandingPage() {
             </div>
             <span className="font-black text-lg tracking-tight text-gray-900">TourFlow</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <a
+              href="#qiymetler"
+              className="hidden sm:block text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
+            >
+              Qiymətlər
+            </a>
             <Link
               href="/login"
               className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
@@ -72,12 +83,12 @@ export default async function LandingPage() {
             >
               Pulsuz Başla →
             </Link>
-            <Link
-              href="/login"
+            <a
+              href="#qiymetler"
               className="inline-flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-base px-8 py-4 rounded-2xl transition-colors"
             >
-              Daxil ol
-            </Link>
+              Qiymətlərə bax
+            </a>
           </div>
         </div>
 
@@ -199,6 +210,111 @@ export default async function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════════════════════════
+          PRICING
+      ════════════════════════════════════════════════════════════ */}
+      <section id="qiymetler" className="bg-white py-20 px-5 border-t border-gray-100">
+        <div className="max-w-5xl mx-auto">
+
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
+            Qiymətlər
+          </p>
+          <h2 className="text-center text-2xl sm:text-3xl font-black text-gray-900 mb-2">
+            Agentliyinizin ölçüsünə uyğun plan seçin
+          </h2>
+          <p className="text-center text-gray-500 text-sm mb-10 max-w-xl mx-auto leading-relaxed">
+            Bütün planlar aylıqdır, illik öhdəlik yoxdur.
+            Qeydiyyatdan keçən hər agentliyə <span className="font-semibold text-gray-700">14 günlük pulsuz sınaq</span> verilir.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
+            {(Object.keys(PLANS) as PlanTier[]).map(tier => {
+              const plan = PLANS[tier];
+              const isEnterprise = tier === 'enterprise';
+              const isHighlighted = plan.highlighted;
+
+              return (
+                <div
+                  key={tier}
+                  className={`relative rounded-2xl border p-6 flex flex-col gap-5 transition-shadow ${
+                    isHighlighted
+                      ? 'border-teal-400 shadow-lg shadow-teal-100 bg-gradient-to-b from-teal-50/60 to-white'
+                      : 'border-gray-200 bg-white hover:shadow-md'
+                  }`}
+                >
+                  {/* "Ən çox seçilən" badge */}
+                  {isHighlighted && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                      <span className="inline-flex items-center gap-1 bg-teal-500 text-white text-[11px] font-black px-3 py-1 rounded-full shadow whitespace-nowrap">
+                        ⭐ Ən çox seçilən
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Header */}
+                  <div>
+                    <h3 className={`font-black text-lg ${isHighlighted ? 'text-teal-700' : 'text-gray-900'}`}>
+                      {plan.name}
+                    </h3>
+                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">{plan.tagline}</p>
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    {isEnterprise ? (
+                      <p className="text-3xl font-black text-gray-900">Xüsusi</p>
+                    ) : (
+                      <div className="flex items-end gap-1">
+                        <span className="text-3xl font-black text-gray-900">
+                          {plan.price} ₼
+                        </span>
+                        <span className="text-gray-400 text-sm pb-0.5">/ ay</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTA */}
+                  {isEnterprise ? (
+                    <a
+                      href={enterpriseWa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 rounded-xl border border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 font-bold text-sm transition-colors text-center"
+                    >
+                      {plan.ctaLabel}
+                    </a>
+                  ) : (
+                    <Link
+                      href="/register"
+                      className={`w-full py-3 rounded-xl font-bold text-sm transition-colors text-center ${
+                        isHighlighted
+                          ? 'bg-teal-500 hover:bg-teal-400 text-white shadow-sm shadow-teal-200'
+                          : 'bg-[#0A0F1E] hover:bg-gray-800 text-white'
+                      }`}
+                    >
+                      {plan.ctaLabel}
+                    </Link>
+                  )}
+
+                  {/* Features */}
+                  <ul className="space-y-2.5 flex-1">
+                    {plan.highlights.map(h => (
+                      <li key={h} className="flex items-start gap-2">
+                        <span className={`mt-0.5 text-xs flex-shrink-0 ${isHighlighted ? 'text-teal-500' : 'text-gray-400'}`}>
+                          ✓
+                        </span>
+                        <span className="text-gray-600 text-xs leading-relaxed">{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════
           CTA SECTION
       ════════════════════════════════════════════════════════════ */}
       <section className="bg-[#0A0F1E] text-white py-20 px-5">
@@ -217,7 +333,7 @@ export default async function LandingPage() {
           >
             İndi Pulsuz Başla →
           </Link>
-          <p className="text-gray-600 text-xs mt-4">Kredit kartı tələb olunmur</p>
+          <p className="text-gray-600 text-xs mt-4">Kredit kartı tələb olunmur · 14 gün pulsuz</p>
         </div>
       </section>
 
@@ -235,6 +351,7 @@ export default async function LandingPage() {
           Azərbaycan turizm agentlikləri üçün hazırlanıb.
         </p>
         <div className="flex items-center justify-center gap-6 mt-5">
+          <a href="#qiymetler" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Qiymətlər</a>
           <Link href="/login"    className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Daxil ol</Link>
           <Link href="/register" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Qeydiyyat</Link>
         </div>

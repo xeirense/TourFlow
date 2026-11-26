@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import {
+  PLANS,
+  getEffectivePlan,
+  DEFAULT_PLAN_DATA,
+  type ProfilePlanData,
+} from '@/lib/planConfig';
 
 // ─── GET /api/team — list team members for the current owner ──────────────────
 export async function GET() {
@@ -28,6 +34,37 @@ export async function POST(request: NextRequest) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
+
+    // ── Plan / member-limit check ───────────────────────────────────────────
+    const { data: profile } = await supabase
+      .from('agency_profiles')
+      .select('plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
+      .eq('id', user.id)
+      .maybeSingle<ProfilePlanData>();
+
+    const p             = profile ?? DEFAULT_PLAN_DATA;
+    const effectiveTier = getEffectivePlan(p);
+    const plan          = PLANS[effectiveTier];
+
+    if (plan.limits.memberLimit !== null) {
+      const { count } = await supabase
+        .from('agency_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', user.id);
+
+      // +1 for the owner themselves
+      const totalMembers = (count ?? 0) + 1;
+      if (totalMembers >= plan.limits.memberLimit) {
+        return NextResponse.json(
+          {
+            error:              `${plan.limits.memberLimit} menecer limitinə çatdınız. Daha çox üzv əlavə etmək üçün planınızı yüksəldin.`,
+            memberLimitReached: true,
+            limit:              plan.limits.memberLimit,
+          },
+          { status: 403 },
+        );
+      }
+    }
 
     const { email, displayName } = await request.json();
 

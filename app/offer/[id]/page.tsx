@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import type { Hotel, Offer } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
+import { PLANS, getEffectivePlan, DEFAULT_PLAN_DATA, type ProfilePlanData } from '@/lib/planConfig';
 import WhatsAppButton from './WhatsAppButton';
 import OfferViewTracker from './OfferViewTracker';
 import CustomerResponse from './CustomerResponse';
@@ -31,6 +33,21 @@ export default async function OfferPage({
   const agencyLabel = offer.agencyName?.trim() || 'Səyahət Agentliyi';
   const waNumber    = offer.managerWhatsapp.replace(/\D/g, '');
   const waUrl       = `https://wa.me/${waNumber}`;
+
+  // Check if agency plan allows customer favorites/notes
+  let showCustomerNote = false;
+  if (offer.agencyId) {
+    const supabase = await createSupabaseServerClient();
+    const { data: agencyProfile } = await supabase
+      .from('agency_profiles')
+      .select('plan_tier, subscription_status, trial_ends_at')
+      .eq('id', offer.agencyId)
+      .maybeSingle<Pick<ProfilePlanData, 'plan_tier' | 'subscription_status' | 'trial_ends_at'>>();
+    if (agencyProfile) {
+      const tier = getEffectivePlan(agencyProfile);
+      showCustomerNote = PLANS[tier].features.customerFavorites;
+    }
+  }
 
   // ── Expired state ──────────────────────────────────────────────────────────
   if (isExpired) {
@@ -150,11 +167,13 @@ export default async function OfferPage({
           />
         ))}
 
-        {/* Customer favourites + note */}
-        <CustomerNote
-          offerId={offer.id}
-          hotelNames={offer.hotels.map(h => h.name)}
-        />
+        {/* Customer favourites + note (Growth+ only) */}
+        {showCustomerNote && (
+          <CustomerNote
+            offerId={offer.id}
+            hotelNames={offer.hotels.map(h => h.name)}
+          />
+        )}
 
         {/* Customer feedback — white card, clearly separated section */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">

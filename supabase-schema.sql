@@ -284,3 +284,120 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.agency_profiles TO authenticated,
 GRANT EXECUTE ON FUNCTION increment_views(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION select_offer_hotel(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION set_customer_response(TEXT, TEXT) TO anon, authenticated;
+
+-- ============================================================
+--  V4 MIGRATION – Plan / Subscription / Gating
+--  Run this in Supabase SQL Editor (all safe with IF NOT EXISTS)
+-- ============================================================
+
+-- ── 1. Plan & subscription columns on agency_profiles ─────────────────────────
+ALTER TABLE public.agency_profiles
+  ADD COLUMN IF NOT EXISTS plan_tier            TEXT NOT NULL DEFAULT 'growth'
+    CHECK (plan_tier IN ('starter', 'growth', 'pro', 'enterprise')),
+  ADD COLUMN IF NOT EXISTS subscription_status  TEXT NOT NULL DEFAULT 'trialing'
+    CHECK (subscription_status IN ('trialing', 'active', 'past_due', 'canceled')),
+  ADD COLUMN IF NOT EXISTS trial_ends_at        TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days'),
+  ADD COLUMN IF NOT EXISTS monthly_offers_used  INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS monthly_reset_at     TIMESTAMPTZ DEFAULT (DATE_TRUNC('month', NOW()) + INTERVAL '1 month');
+
+-- ── 2. Auto-create agency_profile on new user signup ─────────────────────────
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.agency_profiles (
+    id, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at
+  ) VALUES (
+    NEW.id,
+    'growth',
+    'trialing',
+    NOW() + INTERVAL '14 days',
+    0,
+    DATE_TRUNC('month', NOW()) + INTERVAL '1 month'
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+-- Drop existing trigger if present, then re-create
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- ── 3. Backfill missing profiles for existing users ──────────────────────────
+INSERT INTO public.agency_profiles (
+  id, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at
+)
+SELECT
+  id,
+  'growth',
+  'trialing',
+  NOW() + INTERVAL '14 days',
+  0,
+  DATE_TRUNC('month', NOW()) + INTERVAL '1 month'
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
+
+-- ── 4. Atomic offer-limit check + increment ────────────────────────────────────
+-- Returns: { "allowed": true } or { "allowed": false, "used": N, "limit": 50 }
+-- Automatically resets the monthly counter when the reset date has passed.
+CREATE OR REPLACE FUNCTION check_offer_limit(p_agency_id UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_profile         RECORD;
+  v_effective_plan  TEXT;
+BEGIN
+  SELECT plan_tier, subscription_status, trial_ends_at,
+         monthly_offers_used, monthly_reset_at
+  INTO   v_profile
+  FROM   public.agency_profiles
+  WHERE  id = p_agency_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('allowed', true); -- no profile yet → allow
+  END IF;
+
+  -- Effective plan resolution
+  v_effective_plan := v_profile.plan_tier;
+  IF v_profile.subscription_status = 'trialing' THEN
+    IF v_profile.trial_ends_at IS NULL OR v_profile.trial_ends_at <= NOW() THEN
+      v_effective_plan := 'starter';           -- trial expired
+    END IF;
+  ELSIF v_profile.subscription_status = 'canceled' THEN
+    v_effective_plan := 'starter';
+  END IF;
+
+  -- Only starter has a monthly cap
+  IF v_effective_plan != 'starter' THEN
+    RETURN jsonb_build_object('allowed', true);
+  END IF;
+
+  -- Reset monthly counter if reset date has passed
+  IF v_profile.monthly_reset_at IS NULL OR v_profile.monthly_reset_at <= NOW() THEN
+    UPDATE public.agency_profiles
+    SET    monthly_offers_used = 0,
+           monthly_reset_at   = DATE_TRUNC('month', NOW()) + INTERVAL '1 month'
+    WHERE  id = p_agency_id
+    RETURNING monthly_offers_used INTO v_profile.monthly_offers_used;
+  END IF;
+
+  IF v_profile.monthly_offers_used >= 50 THEN
+    RETURN jsonb_build_object('allowed', false,
+                              'used',  v_profile.monthly_offers_used,
+                              'limit', 50);
+  END IF;
+
+  -- Increment and allow
+  UPDATE public.agency_profiles
+  SET    monthly_offers_used = monthly_offers_used + 1
+  WHERE  id = p_agency_id;
+
+  RETURN jsonb_build_object('allowed', true,
+                             'used',  v_profile.monthly_offers_used + 1,
+                             'limit', 50);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION check_offer_limit(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION handle_new_user()         TO service_role;

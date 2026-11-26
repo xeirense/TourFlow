@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import type { PlanTier } from '@/lib/planConfig';
 
 interface TeamMember {
   id: string;
@@ -12,9 +13,15 @@ interface TeamMember {
   created_at: string;
 }
 
+interface PlanStatus {
+  tier: PlanTier;
+  memberLimit: number | null;
+}
+
 export default function TeamPage() {
   const [members,    setMembers]    = useState<TeamMember[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
   const [invEmail,   setInvEmail]   = useState('');
   const [invName,    setInvName]    = useState('');
   const [inviting,   setInviting]   = useState(false);
@@ -22,7 +29,13 @@ export default function TeamPage() {
   const [success,    setSuccess]    = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => { loadMembers(); }, []);
+  useEffect(() => {
+    loadMembers();
+    fetch('/api/plan-status')
+      .then(r => r.json())
+      .then(d => setPlanStatus({ tier: d.tier, memberLimit: d.memberLimit }))
+      .catch(() => {});
+  }, []);
 
   async function loadMembers() {
     setLoading(true);
@@ -65,8 +78,11 @@ export default function TeamPage() {
     setDeletingId(null);
   }
 
-  const activeCount  = members.filter(m => m.status === 'active').length;
-  const invitedCount = members.filter(m => m.status === 'invited').length;
+  const activeCount     = members.filter(m => m.status === 'active').length;
+  const invitedCount    = members.filter(m => m.status === 'invited').length;
+  const totalWithOwner  = members.length + 1; // +1 for owner
+  const memberLimit     = planStatus?.memberLimit ?? null;
+  const atLimit         = memberLimit !== null && totalWithOwner >= memberLimit;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -83,8 +99,9 @@ export default function TeamPage() {
           <div className="flex-1">
             <h1 className="font-bold text-sm leading-tight">Komanda İdarəetməsi</h1>
             <p className="text-slate-500 text-xs">
-              {activeCount} aktiv ·{' '}
-              {invitedCount > 0 && `${invitedCount} gözləyir`}
+              {activeCount} aktiv
+              {invitedCount > 0 && ` · ${invitedCount} gözləyir`}
+              {memberLimit !== null && ` · limit: ${memberLimit}`}
             </p>
           </div>
         </div>
@@ -98,6 +115,20 @@ export default function TeamPage() {
           <p className="text-xs text-slate-400 mb-4">
             E-poçt ünvanı ilə meneceri komandanıza əlavə edin. O giriş etdikdə avtomatik aktivləşəcək.
           </p>
+
+          {atLimit && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
+              🔒 {memberLimit} menecer limitinə çatdınız. Daha çox üzv əlavə etmək üçün planınızı yüksəldin.
+              <a
+                href={`https://wa.me/${(process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow komanda limitini artırmaq üçün planımı yüksəltmək istəyirəm.')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1.5 underline font-bold"
+              >
+                Planı Yüksəlt →
+              </a>
+            </div>
+          )}
 
           <form onSubmit={handleInvite} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -133,10 +164,10 @@ export default function TeamPage() {
 
             <button
               type="submit"
-              disabled={inviting}
+              disabled={inviting || atLimit}
               className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white font-bold text-sm transition-colors"
             >
-              {inviting ? 'Əlavə edilir…' : '+ Komandaya Əlavə Et'}
+              {inviting ? 'Əlavə edilir…' : atLimit ? '🔒 Limit dolub' : '+ Komandaya Əlavə Et'}
             </button>
           </form>
         </div>

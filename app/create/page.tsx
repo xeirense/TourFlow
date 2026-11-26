@@ -77,6 +77,24 @@ function CreatePageContent() {
       .catch(() => setProfileLoaded(true));
   }, []);
 
+  // ── Plan permissions ──────────────────────────────────────────────────────────
+  const [planFeatures, setPlanFeatures] = useState<{
+    templates: boolean;
+    alternativeOffer: boolean;
+  }>({ templates: true, alternativeOffer: true }); // optimistic defaults
+
+  useEffect(() => {
+    fetch('/api/plan-status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.features) setPlanFeatures({
+          templates:        d.features.templates,
+          alternativeOffer: d.features.alternativeOffer,
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Templates ─────────────────────────────────────────────────────────────────
   const [templates,        setTemplates]        = useState<OfferTemplate[]>([]);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -394,10 +412,15 @@ function CreatePageContent() {
           <div className="border-t border-white/10 pt-4 mt-2">
             {!showSaveTemplate ? (
               <button
-                onClick={() => setShowSaveTemplate(true)}
-                className="w-full py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-slate-300 font-medium text-sm transition-colors"
+                onClick={() => planFeatures.templates ? setShowSaveTemplate(true) : undefined}
+                disabled={!planFeatures.templates}
+                className={`w-full py-2.5 rounded-xl border border-white/10 font-medium text-sm transition-colors ${
+                  planFeatures.templates
+                    ? 'hover:bg-white/5 text-slate-400 hover:text-slate-300'
+                    : 'opacity-40 cursor-not-allowed text-slate-500'
+                }`}
               >
-                💾 Şablon kimi yadda saxla
+                {planFeatures.templates ? '💾 Şablon kimi yadda saxla' : '🔒 Şablon (Growth+)'}
               </button>
             ) : (
               <div className="space-y-2">
@@ -469,7 +492,16 @@ function CreatePageContent() {
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-5 pb-24">
 
         {/* ── 0. Templates ─────────────────────────────────────────────── */}
-        {templates.length > 0 && (
+        {!planFeatures.templates ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-dashed border-slate-200 p-4 flex items-center gap-3 opacity-70">
+            <span className="text-xl">💾</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-500">Tur Şablonları</p>
+              <p className="text-xs text-slate-400">Bu funksiya Growth paketindən aktivdir</p>
+            </div>
+            <span className="text-lg">🔒</span>
+          </div>
+        ) : templates.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide mb-3">
               <span>💾</span> Şablonlar
@@ -499,20 +531,40 @@ function CreatePageContent() {
               Şablona basın → istiqamət, gecə sayı və xidmətlər avtomatik dolur
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* Alternative offer notice */}
         {isAlt && duplicateId && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-            <span className="text-amber-500 text-lg flex-shrink-0">↩</span>
-            <div>
-              <p className="text-sm font-semibold text-amber-800">Alternativ / Büdcəyə Uyğun Təklif</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Əvvəlki təklif ilə əlaqəli yeni otel variantları əlavə edin.
-                Müştəri məlumatları artıq dolduruldu.
-              </p>
+          planFeatures.alternativeOffer ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-amber-500 text-lg flex-shrink-0">↩</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Alternativ / Büdcəyə Uyğun Təklif</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Əvvəlki təklif ilə əlaqəli yeni otel variantları əlavə edin.
+                  Müştəri məlumatları artıq dolduruldu.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">🔒</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800">Alternativ Təklif — Growth Paketi Lazımdır</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  1-kliklə alternativ təklif yaratma Growth paketindən aktivdir.
+                </p>
+                <a
+                  href={`https://wa.me/${(typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000') : '994000000000').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Growth paketinə keçmək istəyirəm.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-xs font-bold text-amber-700 underline"
+                >
+                  Growth paketinə keç →
+                </a>
+              </div>
+            </div>
+          )
         )}
 
         {/* ── 1. Agency / Manager ─────────────────────────────────────── */}
