@@ -119,14 +119,16 @@ export default function TeamPage() {
           {atLimit && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
               🔒 {memberLimit} menecer limitinə çatdınız. Daha çox üzv əlavə etmək üçün planınızı yüksəldin.
-              <a
-                href={`https://wa.me/${(process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow komanda limitini artırmaq üçün planımı yüksəltmək istəyirəm.')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-1.5 underline font-bold"
-              >
-                Planı Yüksəlt →
-              </a>
+              {process.env.NEXT_PUBLIC_SUPPORT_WA && (
+                <a
+                  href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WA.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow komanda limitini artırmaq üçün planımı yüksəltmək istəyirəm.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1.5 underline font-bold"
+                >
+                  Planı Yüksəlt →
+                </a>
+              )}
             </div>
           )}
 

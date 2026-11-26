@@ -100,6 +100,9 @@ export async function POST(request: NextRequest) {
       if ((body as { parentOfferId?: string }).parentOfferId) {
         patch.parent_offer_id = (body as { parentOfferId?: string }).parentOfferId;
       }
+      if ((body as { clientPhone?: string }).clientPhone?.trim()) {
+        patch.client_phone = (body as { clientPhone?: string }).clientPhone!.trim();
+      }
       await supabase.from('offers').update(patch).eq('id', offerId).eq('agency_id', user.id);
 
       // Increment monthly counter (only relevant for starter, harmless for others)

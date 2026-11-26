@@ -481,7 +481,7 @@ export default async function AnalyticsPage({
         {rows.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">Tekliflər</h2>
+              <h2 className="font-bold text-slate-800">Təkliflər</h2>
               <span className="text-xs text-slate-400">{rows.length} ədəd</span>
             </div>
             <ul className="divide-y divide-slate-50">

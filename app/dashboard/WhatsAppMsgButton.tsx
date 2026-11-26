@@ -9,7 +9,8 @@ interface Props {
   nights:      number;
   hotelsCount: number;
   offerLink:   string;
-  waNumber:    string;
+  clientPhone?: string; // client's WA number (preferred target)
+  waNumber:    string;  // manager's WA (fallback)
 }
 
 function buildMessage(p: Props): string {
@@ -46,7 +47,11 @@ export default function WhatsAppMsgButton(props: Props) {
     setTimeout(() => setCopied(false), 2200);
   }
 
-  const waHref = `https://wa.me/${props.waNumber}?text=${encodeURIComponent(msg)}`;
+  // Prefer client's phone; fall back to manager's; fall back to universal picker
+  const phone = (props.clientPhone ?? '').replace(/\D/g, '') || props.waNumber;
+  const waHref = phone
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
 
   return (
     <>

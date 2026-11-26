@@ -66,6 +66,7 @@ export interface Offer {
   createdBy?: string;
   customerFavorites?: string[];
   customerNote?: string;
+  clientPhone?: string;
 }
 
 export interface OfferTemplate {

@@ -10,7 +10,7 @@ const PLAN_LABELS: Record<PlanTier, string> = {
   enterprise: 'Enterprise',
 };
 
-const WA_NUMBER = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000';
+const WA_NUMBER = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
 interface UpgradeModalProps {
   requiredPlan: PlanTier;
@@ -49,15 +49,21 @@ export default function UpgradeModal({
         </p>
 
         <div className="space-y-2.5">
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-bold text-sm transition-colors"
-          >
-            <WaIcon />
-            {PLAN_LABELS[requiredPlan]} paketinə keç
-          </a>
+          {WA_NUMBER ? (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-bold text-sm transition-colors"
+            >
+              <WaIcon />
+              {PLAN_LABELS[requiredPlan]} paketinə keç
+            </a>
+          ) : (
+            <p className="text-center text-xs text-gray-400 py-2">
+              Planı yüksəltmək üçün sayt administratoru ilə əlaqə saxlayın.
+            </p>
+          )}
           <button
             onClick={onClose}
             className="w-full py-2.5 rounded-2xl text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors hover:bg-gray-50"

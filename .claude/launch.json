@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tourflow-mock",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["USE_MOCK_DB=true", "RESEND_API_KEY=", "npx", "next", "dev", "-p", "3005"],
+      "port": 3005
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { Currency, MealType, Stars, OfferTemplate } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 
+const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
+
 // ─── Preset hotel images ──────────────────────────────────────────────────────
 const PRESET_IMAGES = [
   { label: 'Çimərlik', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' },
@@ -148,6 +150,7 @@ function CreatePageContent() {
 
   // ── Trip ─────────────────────────────────────────────────────────────────────
   const [clientName,  setClientName]  = useState('');
+  const [clientPhone, setClientPhone] = useState('');
   const [destination, setDestination] = useState('');
   const [startDate,   setStartDate]   = useState('');
   const [endDate,     setEndDate]     = useState('');
@@ -264,6 +267,7 @@ function CreatePageContent() {
             })),
             // Alternative offer linking
             parentOfferId: isAlt && duplicateId ? duplicateId : undefined,
+            clientPhone:   clientPhone.trim() || undefined,
           }),
         });
 
@@ -295,8 +299,8 @@ function CreatePageContent() {
         setLoading(false);
       }
     },
-    [agencyName, agencyLogo, managerName, managerWhatsapp, clientName, destination,
-     startDate, endDate, nights, passengers, includes, hotels, isAlt, duplicateId],
+    [agencyName, agencyLogo, managerName, managerWhatsapp, clientName, clientPhone,
+     destination, startDate, endDate, nights, passengers, includes, hotels, isAlt, duplicateId],
   );
 
   function copyLink() {
@@ -312,13 +316,18 @@ function CreatePageContent() {
   }
 
   function sendWaMsg() {
-    const number = managerWhatsapp.replace(/\D/g, '');
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    const phone = clientPhone.replace(/\D/g, '');
+    // If client phone provided → open their chat; otherwise open universal picker
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`
+      : `https://wa.me/?text=${encodeURIComponent(waMsg)}`;
+    window.open(url, '_blank');
   }
 
   function resetForm() {
     setOfferLink('');
     setClientName('');
+    setClientPhone('');
     setDestination('');
     setStartDate('');
     setEndDate('');
@@ -554,14 +563,16 @@ function CreatePageContent() {
                 <p className="text-xs text-amber-700 mt-0.5">
                   1-kliklə alternativ təklif yaratma Growth paketindən aktivdir.
                 </p>
-                <a
-                  href={`https://wa.me/${(typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000') : '994000000000').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Growth paketinə keçmək istəyirəm.')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 text-xs font-bold text-amber-700 underline"
-                >
-                  Growth paketinə keç →
-                </a>
+                {SUPPORT_WA && (
+                  <a
+                    href={`https://wa.me/${SUPPORT_WA.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Growth paketinə keçmək istəyirəm.')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-xs font-bold text-amber-700 underline"
+                  >
+                    Growth paketinə keç →
+                  </a>
+                )}
               </div>
             </div>
           )
@@ -671,15 +682,26 @@ function CreatePageContent() {
             </Field>
           </div>
 
-          <Field label="Adam sayı">
-            <input
-              type="text"
-              value={passengers}
-              onChange={e => setPassengers(e.target.value)}
-              placeholder="2 böyük, 1 uşaq (3–12)"
-              className={inputCls}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Adam sayı">
+              <input
+                type="text"
+                value={passengers}
+                onChange={e => setPassengers(e.target.value)}
+                placeholder="2 böyük, 1 uşaq (3–12)"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Müştərinin WA nömrəsi (opsional)">
+              <input
+                type="tel"
+                value={clientPhone}
+                onChange={e => setClientPhone(e.target.value)}
+                placeholder="+99450XXXXXXX"
+                className={inputCls}
+              />
+            </Field>
+          </div>
 
           {/* Includes checkboxes */}
           <div>

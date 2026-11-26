@@ -34,6 +34,7 @@ interface OfferRow {
   parent_offer_id: string | null;
   customer_note: string | null;
   created_by: string | null;
+  client_phone: string | null;
 }
 
 interface TeamMember {
@@ -60,6 +61,7 @@ function formatDate(iso: string): string {
 function timeAgo(iso: string): string {
   const diff  = Date.now() - new Date(iso).getTime();
   const mins  = Math.floor(diff / 60000);
+  if (mins < 1)   return 'indicə';
   if (mins < 60)  return `${mins} dəq əvvəl`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} saat əvvəl`;
@@ -110,7 +112,7 @@ export default async function DashboardPage() {
 
   const { data: offersData } = await supabase
     .from('offers')
-    .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status, customer_response, expires_at, last_viewed_at, parent_offer_id, customer_note, created_by')
+    .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status, customer_response, expires_at, last_viewed_at, parent_offer_id, customer_note, created_by, client_phone')
     .in('agency_id', allIds)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -139,45 +141,76 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-slate-100">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <header className="bg-[#0A0F1E] border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm font-black flex-shrink-0">
-            {agencyLabel.charAt(0).toUpperCase()}
+      <header className="bg-[#0A0F1E] border-b border-white/5 text-white px-4 py-3 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto">
+          {/* Top row: logo + brand + desktop nav + CTA + logout */}
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs font-black flex-shrink-0">
+              {agencyLabel.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-sm leading-tight truncate">{agencyLabel}</h1>
+            </div>
+            {/* Desktop nav — hidden on mobile */}
+            <nav className="hidden sm:flex items-center gap-1">
+              <Link
+                href="/dashboard/analytics"
+                className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+              >
+                📊 Analitika
+              </Link>
+              <Link
+                href="/dashboard/team"
+                className="relative text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+              >
+                👥 Komanda
+                {teamMembers.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 rounded-full text-[9px] font-bold flex items-center justify-center">
+                    {teamMembers.length}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+              >
+                ⚙️ Profil
+              </Link>
+            </nav>
+            <Link
+              href="/create"
+              className="bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs px-3 py-2 rounded-xl transition-colors flex-shrink-0 whitespace-nowrap"
+            >
+              + Yeni
+            </Link>
+            <LogoutButton />
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm leading-tight truncate">{agencyLabel}</h1>
-            <p className="text-slate-500 text-xs">TourFlow Panel</p>
-          </div>
-          <Link
-            href="/dashboard/analytics"
-            className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
-          >
-            📊 Analitika
-          </Link>
-          <Link
-            href="/dashboard/team"
-            className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 relative"
-          >
-            👥 Komanda
-            {teamMembers.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 rounded-full text-[9px] font-bold flex items-center justify-center">
-                {teamMembers.length}
-              </span>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/settings"
-            className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
-          >
-            ⚙️ Profil
-          </Link>
-          <Link
-            href="/create"
-            className="bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors flex-shrink-0"
-          >
-            + Yeni Təklif
-          </Link>
-          <LogoutButton />
+          {/* Mobile nav row — scrollable, hidden on sm+ */}
+          <nav className="sm:hidden mt-2 flex items-center gap-1 overflow-x-auto pb-1">
+            <Link
+              href="/dashboard/analytics"
+              className="flex-shrink-0 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+            >
+              📊 Analitika
+            </Link>
+            <Link
+              href="/dashboard/team"
+              className="flex-shrink-0 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+            >
+              👥 Komanda
+              {teamMembers.length > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center w-4 h-4 bg-teal-500 rounded-full text-[9px] font-bold">
+                  {teamMembers.length}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/dashboard/settings"
+              className="flex-shrink-0 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+            >
+              ⚙️ Profil
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -335,6 +368,7 @@ export default async function DashboardPage() {
                             nights={offer.nights}
                             hotelsCount={offer.hotels?.length ?? 0}
                             offerLink={offerUrl}
+                            clientPhone={offer.client_phone ?? undefined}
                             waNumber={(profile?.whatsapp ?? '').replace(/\D/g, '')}
                           />
                           <CopyButton url={offerUrl} />
@@ -350,7 +384,7 @@ export default async function DashboardPage() {
                             href={`/create?from=${offer.id}`}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
                           >
-                            📋 Kopyala
+                            📋 Dublikat
                           </Link>
                         </div>
                         {/* Alternativ yarat (shown for price_high responses) */}
@@ -392,8 +426,10 @@ function PlanBanner({
   monthlyUsed:   number;
   monthlyLimit:  number | null;
 }) {
-  const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000';
-  const waHref = `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow planımı yüksəltmək istəyirəm.')}`;
+  const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
+  const waHref = WA_SUPPORT
+    ? `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow planımı yüksəltmək istəyirəm.')}`
+    : '';
 
   // Don't show banner for active growth/pro/enterprise (only show for starter or trialing)
   if (!isTrialing && tier !== 'starter') return null;
@@ -428,14 +464,16 @@ function PlanBanner({
           </div>
         )}
       </div>
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex-shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white transition-colors whitespace-nowrap"
-      >
-        Planı Yüksəlt ↗
-      </a>
+      {waHref && (
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white transition-colors whitespace-nowrap"
+        >
+          Planı Yüksəlt ↗
+        </a>
+      )}
     </div>
   );
 }
