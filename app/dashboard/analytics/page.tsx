@@ -271,8 +271,10 @@ export default async function AnalyticsPage({
                   key={`ph-${o.id}`}
                   id={o.id}
                   label={`💬 ${o.destination}${o.client_name ? ` — ${o.client_name}` : ''}`}
-                  note="Müştəri qiyməti yüksək tapdı — endirim və ya alternativ təklif et"
+                  note="Müştəri qiyməti yüksək tapdı — alternativ təklif yarat"
                   cls="bg-yellow-50 border-yellow-200 text-yellow-800"
+                  actionHref={`/create?from=${o.id}&alt=1`}
+                  actionLabel="↩ Alternativ"
                 />
               ))}
               {expiringOffers.map(o => (
@@ -552,24 +554,38 @@ function AttentionItem({
   label,
   note,
   cls,
+  actionHref,
+  actionLabel,
 }: {
   id: string;
   label: string;
   note: string;
   cls: string;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
-    <Link
-      href={`/offer/${id}`}
-      target="_blank"
-      className={`flex items-start gap-3 p-3 rounded-xl border ${cls} hover:opacity-90 transition-opacity`}
-    >
-      <div className="flex-1 min-w-0">
+    <div className={`flex items-center gap-2 p-3 rounded-xl border ${cls}`}>
+      <Link
+        href={`/offer/${id}`}
+        target="_blank"
+        className="flex-1 min-w-0 hover:opacity-90 transition-opacity"
+      >
         <p className="text-sm font-semibold truncate">{label}</p>
         <p className="text-xs opacity-70 mt-0.5">{note}</p>
+      </Link>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {actionHref && actionLabel && (
+          <Link
+            href={actionHref}
+            className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors whitespace-nowrap"
+          >
+            {actionLabel}
+          </Link>
+        )}
+        <span className="text-xs opacity-40">→</span>
       </div>
-      <span className="text-xs opacity-40 mt-0.5 flex-shrink-0">→</span>
-    </Link>
+    </div>
   );
 }
 

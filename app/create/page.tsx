@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import type { Currency, MealType, Stars } from '@/lib/types';
+import type { Currency, MealType, Stars, OfferTemplate } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 
 // ─── Preset hotel images ──────────────────────────────────────────────────────
@@ -55,6 +55,7 @@ function CreatePageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const duplicateId  = searchParams.get('from');
+  const isAlt        = searchParams.get('alt') === '1'; // alternative offer mode
 
   // ── Agency (auto-filled from profile) ────────────────────────────────────────
   const [agencyName,      setAgencyName]      = useState('');
@@ -68,13 +69,64 @@ function CreatePageContent() {
     fetch('/api/auth/profile')
       .then(r => r.json())
       .then(p => {
-        if (p.agency_name)  setAgencyName(p.agency_name);
-        if (p.agency_logo)  setAgencyLogo(p.agency_logo);
-        if (p.whatsapp)     setManagerWhatsapp(p.whatsapp);
+        if (p.agency_name) setAgencyName(p.agency_name);
+        if (p.agency_logo) setAgencyLogo(p.agency_logo);
+        if (p.whatsapp)    setManagerWhatsapp(p.whatsapp);
         setProfileLoaded(true);
       })
       .catch(() => setProfileLoaded(true));
   }, []);
+
+  // ── Templates ─────────────────────────────────────────────────────────────────
+  const [templates,        setTemplates]        = useState<OfferTemplate[]>([]);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateNameInput, setTemplateNameInput] = useState('');
+  const [templateSaved,    setTemplateSaved]    = useState(false);
+  const [deletingTemplId,  setDeletingTemplId]  = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/templates')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setTemplates(data); })
+      .catch(() => {});
+  }, []);
+
+  function applyTemplate(t: OfferTemplate) {
+    setDestination(t.destination);
+    setNights(String(t.nights));
+    setIncludes(t.includes as string[]);
+  }
+
+  async function handleSaveTemplate() {
+    if (!templateNameInput.trim()) return;
+    try {
+      const res = await fetch('/api/templates', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          name:        templateNameInput.trim(),
+          destination: destination.trim(),
+          nights:      parseInt(nights) || 7,
+          includes,
+        }),
+      });
+      if (res.ok) {
+        const t = await res.json();
+        setTemplates(prev => [t, ...prev]);
+        setTemplateSaved(true);
+        setTimeout(() => { setShowSaveTemplate(false); setTemplateSaved(false); setTemplateNameInput(''); }, 1800);
+      }
+    } catch {}
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    setDeletingTemplId(id);
+    try {
+      await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+      setTemplates(prev => prev.filter(t => t.id !== id));
+    } catch {}
+    setDeletingTemplId(null);
+  }
 
   // ── Trip ─────────────────────────────────────────────────────────────────────
   const [clientName,  setClientName]  = useState('');
@@ -121,8 +173,13 @@ function CreatePageContent() {
             note:      h.note ?? '',
           })));
         }
+        // If alternative mode, clear hotels so menecer adds cheaper ones
+        if (isAlt) {
+          setHotels([blankHotel()]);
+        }
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duplicateId]);
 
   function toggleInclude(key: string) {
@@ -148,6 +205,8 @@ function CreatePageContent() {
   const [offerLink, setOfferLink] = useState('');
   const [copied,    setCopied]    = useState(false);
   const [submitErr, setSubmitErr] = useState('');
+  const [waMsg,     setWaMsg]     = useState('');
+  const [waCopied,  setWaCopied]  = useState(false);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -162,9 +221,9 @@ function CreatePageContent() {
 
       try {
         const res = await fetch('/api/offers', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body:    JSON.stringify({
             agencyName:      agencyName.trim()      || undefined,
             agencyLogo:      agencyLogo.trim()      || undefined,
             managerName:     managerName.trim()     || undefined,
@@ -185,13 +244,33 @@ function CreatePageContent() {
               priceType: h.priceType,
               note:      h.note.trim() || undefined,
             })),
+            // Alternative offer linking
+            parentOfferId: isAlt && duplicateId ? duplicateId : undefined,
           }),
         });
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'Xəta baş verdi');
 
-        setOfferLink(`${window.location.origin}/offer/${data.id}`);
+        const link = `${window.location.origin}/offer/${data.id}`;
+        setOfferLink(link);
+
+        // Build natural WA message
+        const msgLines = [
+          `Salam ${clientName.trim()}! 👋`,
+          '',
+          `${destination.trim()} üzrə xüsusi hazırladığım tur paketi göndərdim.`,
+          '',
+          ...(dateRange       ? [`📅 Tarix: ${dateRange}`] : []),
+          ...(nights          ? [`🌙 Müddət: ${nights} gecə`] : []),
+          `🏨 ${hotels.length} otel variantı`,
+          '',
+          '👇 Baxmaq üçün link:',
+          link,
+          '',
+          'Sualınız olsa, yazın! 🤝',
+        ];
+        setWaMsg(msgLines.join('\n'));
       } catch (err: unknown) {
         setSubmitErr(err instanceof Error ? err.message : 'Xəta baş verdi');
       } finally {
@@ -199,7 +278,7 @@ function CreatePageContent() {
       }
     },
     [agencyName, agencyLogo, managerName, managerWhatsapp, clientName, destination,
-     startDate, endDate, nights, passengers, includes, hotels],
+     startDate, endDate, nights, passengers, includes, hotels, isAlt, duplicateId],
   );
 
   function copyLink() {
@@ -208,10 +287,15 @@ function CreatePageContent() {
     setTimeout(() => setCopied(false), 2500);
   }
 
-  function sendToWhatsApp() {
+  function copyWaMsg() {
+    navigator.clipboard.writeText(waMsg).catch(() => {});
+    setWaCopied(true);
+    setTimeout(() => setWaCopied(false), 2200);
+  }
+
+  function sendWaMsg() {
     const number = managerWhatsapp.replace(/\D/g, '');
-    const text   = encodeURIComponent(`Müştəri təklif linki:\n${offerLink}`);
-    window.open(`https://wa.me/${number}?text=${text}`, '_blank');
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(waMsg)}`, '_blank');
   }
 
   function resetForm() {
@@ -224,6 +308,7 @@ function CreatePageContent() {
     setPassengers('');
     setIncludes(['flight', 'hotel']);
     setHotels([blankHotel()]);
+    setWaMsg('');
   }
 
   async function handleLogout() {
@@ -237,51 +322,117 @@ function CreatePageContent() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (offerLink) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
-        <div className="bg-[#1E293B] border border-white/5 rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold text-white mb-2">Təklif hazırdır!</h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Aşağıdakı linki müştəriyə göndərin
-          </p>
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 py-8">
+        <div className="bg-[#1E293B] border border-white/5 rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+
+          {/* Header */}
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-2">🎉</div>
+            <h2 className="text-lg font-bold text-white">Təklif hazırdır!</h2>
+            {isAlt && (
+              <span className="inline-block mt-1.5 text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full">
+                ↩ Alternativ Təklif
+              </span>
+            )}
+            <p className="text-xs text-slate-400 mt-2">
+              Aşağıdakı linki müştəriyə göndərin
+            </p>
+          </div>
 
           {/* Link box */}
           <div className="bg-white/5 rounded-xl p-3 text-xs text-teal-400 font-mono break-all mb-4 select-all border border-white/10">
             {offerLink}
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex gap-2 mb-5">
             <button
               onClick={copyLink}
-              className="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold text-sm transition-colors"
             >
-              {copied ? '✓ Kopyalandı!' : '📋 Linki kopyala'}
+              {copied ? '✓ Kopyalandı' : '📋 Linki kopyala'}
             </button>
-
-            <button
-              onClick={sendToWhatsApp}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold transition-all"
-            >
-              <span className="flex items-center justify-center gap-2">
-                <WhatsAppIcon />
-                WhatsApp-da göndər
-              </span>
-            </button>
-
             <Link
               href="/dashboard"
-              className="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-medium transition-colors text-center block"
+              className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-medium text-sm transition-colors text-center"
             >
-              📊 Dashboard-a qayıt
+              📊 Dashboard
             </Link>
-
-            <button
-              onClick={resetForm}
-              className="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 font-medium transition-colors"
-            >
-              + Yeni təklif yarat
-            </button>
           </div>
+
+          {/* ── WhatsApp Message Generator ──────────────────────────────── */}
+          <div className="border-t border-white/10 pt-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              📱 Müştəriyə göndəriləcək mesaj
+            </p>
+            <textarea
+              value={waMsg}
+              onChange={e => setWaMsg(e.target.value)}
+              rows={9}
+              className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-slate-200 resize-none focus:outline-none focus:ring-1 focus:ring-teal-500 font-mono leading-relaxed"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={copyWaMsg}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  waCopied
+                    ? 'bg-teal-500/30 text-teal-300'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                {waCopied ? '✓ Kopyalandı' : '📋 Kopyala'}
+              </button>
+              <button
+                onClick={sendWaMsg}
+                className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+              >
+                <WaIcon /> Göndər
+              </button>
+            </div>
+          </div>
+
+          {/* ── Save as template ────────────────────────────────────────── */}
+          <div className="border-t border-white/10 pt-4 mt-2">
+            {!showSaveTemplate ? (
+              <button
+                onClick={() => setShowSaveTemplate(true)}
+                className="w-full py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-slate-300 font-medium text-sm transition-colors"
+              >
+                💾 Şablon kimi yadda saxla
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={templateNameInput}
+                  onChange={e => setTemplateNameInput(e.target.value)}
+                  placeholder="Şablon adı (məs. Antalya 7 gecə)"
+                  className="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveTemplate}
+                    className="flex-1 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold text-sm transition-colors"
+                  >
+                    {templateSaved ? '✓ Saxlandı!' : 'Saxla'}
+                  </button>
+                  <button
+                    onClick={() => { setShowSaveTemplate(false); setTemplateNameInput(''); }}
+                    className="px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm transition-colors"
+                  >
+                    Ləğv et
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={resetForm}
+            className="w-full mt-2 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 font-medium text-sm transition-colors"
+          >
+            + Yeni təklif yarat
+          </button>
         </div>
       </div>
     );
@@ -297,7 +448,9 @@ function CreatePageContent() {
         <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-base">✈️</div>
         <div className="flex-1">
           <h1 className="font-bold text-sm leading-tight">TourFlow</h1>
-          <p className="text-slate-500 text-xs">30 Saniyəlik Tur Təklifi</p>
+          <p className="text-slate-500 text-xs">
+            {isAlt ? '↩ Alternativ Büdcəyə Uyğun Təklif' : '30 Saniyəlik Tur Təklifi'}
+          </p>
         </div>
         <Link
           href="/dashboard"
@@ -314,6 +467,53 @@ function CreatePageContent() {
       </header>
 
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-5 pb-24">
+
+        {/* ── 0. Templates ─────────────────────────────────────────────── */}
+        {templates.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+            <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide mb-3">
+              <span>💾</span> Şablonlar
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {templates.map(t => (
+                <div key={t.id} className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl pr-1 pl-3 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="text-sm font-semibold text-slate-700 hover:text-teal-600 transition-colors"
+                  >
+                    {t.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTemplate(t.id)}
+                    disabled={deletingTemplId === t.id}
+                    className="ml-1 text-xs text-slate-300 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Şablona basın → istiqamət, gecə sayı və xidmətlər avtomatik dolur
+            </p>
+          </div>
+        )}
+
+        {/* Alternative offer notice */}
+        {isAlt && duplicateId && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+            <span className="text-amber-500 text-lg flex-shrink-0">↩</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Alternativ / Büdcəyə Uyğun Təklif</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Əvvəlki təklif ilə əlaqəli yeni otel variantları əlavə edin.
+                Müştəri məlumatları artıq dolduruldu.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── 1. Agency / Manager ─────────────────────────────────────── */}
         <Section title="Agentlik / Menecer məlumatları" emoji="🏢">
@@ -457,7 +657,7 @@ function CreatePageContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
-              <span>🏨</span> Otel variantları
+              <span>🏨</span> {isAlt ? 'Büdcəyə uyğun otel variantları' : 'Otel variantları'}
             </h2>
             <span className="text-xs text-slate-400">{hotels.length}/5</span>
           </div>
@@ -501,7 +701,7 @@ function CreatePageContent() {
               Hazırlanır...
             </span>
           ) : (
-            '⚡ Təklif Linkini Yarat'
+            isAlt ? '↩ Alternativ Linkini Yarat' : '⚡ Təklif Linkini Yarat'
           )}
         </button>
       </form>
@@ -562,16 +762,13 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
       if (res.ok && data.url) onChange({ imageUrl: data.url });
     } catch {}
     setUploading(false);
-    // Reset input so same file can be re-uploaded
     e.target.value = '';
   }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-slate-700 text-sm">
-          Variant {index + 1}
-        </span>
+        <span className="font-semibold text-slate-700 text-sm">Variant {index + 1}</span>
         {onRemove && (
           <button
             type="button"
@@ -645,7 +842,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
             onChange={e => onChange({ currency: e.target.value as Currency })}
             className={inputCls}
           >
-            {(['AZN','USD','EUR'] as Currency[]).map(c => (
+            {(['AZN', 'USD', 'EUR'] as Currency[]).map(c => (
               <option key={c} value={c}>{c} ({CURRENCY_SYMBOLS[c]})</option>
             ))}
           </select>
@@ -662,13 +859,11 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
         </Field>
       </div>
 
-      {/* Image section: presets + file upload + URL */}
+      {/* Image section */}
       <div className="space-y-2">
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
           Otel şəkli
         </label>
-
-        {/* Preset thumbnails */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {PRESET_IMAGES.map(preset => (
             <button
@@ -691,8 +886,6 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
             </button>
           ))}
         </div>
-
-        {/* File upload */}
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex-shrink-0">
             <span>📁</span>
@@ -707,8 +900,6 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
           </label>
           <span className="text-xs text-slate-400">maks. 5 MB</span>
         </div>
-
-        {/* URL fallback */}
         <input
           type="url"
           value={hotel.imageUrl}
@@ -732,9 +923,9 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
   );
 }
 
-function WhatsAppIcon() {
+function WaIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
     </svg>
   );

@@ -61,7 +61,36 @@ export interface Offer {
   expiresAt?: string;
   customerResponse?: CustomerResponse;
   lastViewedAt?: string;
+  // V3 additions
+  parentOfferId?: string;
+  createdBy?: string;
+  customerFavorites?: string[];
+  customerNote?: string;
+}
+
+export interface OfferTemplate {
+  id: string;
+  agencyId: string;
+  name: string;
+  destination: string;
+  nights: number;
+  includes: string[];
+  note?: string;
+  createdAt: string;
+}
+
+export interface AgencyMember {
+  id: string;
+  ownerId: string;
+  memberUserId?: string;
+  invitedEmail: string;
+  displayName?: string;
+  role: 'owner' | 'agent';
+  status: 'active' | 'invited';
+  createdAt: string;
 }
 
 /** Shape accepted by POST /api/offers */
-export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status' | 'expiresAt' | 'customerResponse' | 'lastViewedAt'>;
+export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status' | 'expiresAt' | 'customerResponse' | 'lastViewedAt' | 'createdBy' | 'customerFavorites' | 'customerNote'> & {
+  parentOfferId?: string;
+};

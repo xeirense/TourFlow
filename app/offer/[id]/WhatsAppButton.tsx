@@ -12,16 +12,41 @@ export default function WhatsAppButton({
   async function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
 
-    // Track hotel selection before opening WhatsApp
+    // ── Enrich WA message with customer's saved note + other favourites ──────
+    let enrichedUrl = waUrl;
+    try {
+      const favKey  = `tf_fav_${offerId}`;
+      const noteKey = `tf_note_${offerId}`;
+      const favorites: string[] = JSON.parse(localStorage.getItem(favKey) || '[]');
+      const note = localStorage.getItem(noteKey) || '';
+
+      const extraLines: string[] = [];
+      // Show other hotels the customer liked (excluding the one they're clicking)
+      const otherFavs = favorites.filter(n => n !== hotelName);
+      if (otherFavs.length > 0) {
+        extraLines.push(`\n*Baxdığım digər otellər:* ${otherFavs.join(', ')}`);
+      }
+      if (note.trim()) {
+        extraLines.push(`\n*Qeydum:* ${note.trim()}`);
+      }
+
+      if (extraLines.length > 0) {
+        const baseMsg  = decodeURIComponent(waUrl.split('?text=')[1] || '');
+        const waNumber = waUrl.split('?')[0].replace('https://wa.me/', '');
+        enrichedUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(baseMsg + extraLines.join(''))}`;
+      }
+    } catch {}
+
+    // Track hotel selection
     fetch('/api/events', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ offerId, type: 'whatsapp_click', hotelName }),
+      body:    JSON.stringify({ offerId, type: 'whatsapp_click', hotelName }),
     }).catch(() => {});
 
-    // Small delay to allow the event to fire, then open WhatsApp
+    // Small delay for the event to fire, then open WhatsApp
     await new Promise(resolve => setTimeout(resolve, 400));
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    window.open(enrichedUrl, '_blank', 'noopener,noreferrer');
   }
 
   return (

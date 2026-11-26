@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import CopyButton from './CopyButton';
 import LogoutButton from './LogoutButton';
 import DeleteOfferButton from './DeleteOfferButton';
+import WhatsAppMsgButton from './WhatsAppMsgButton';
 import type { ReactNode } from 'react';
 
 // ─── Row type from offers table ───────────────────────────────────────────────
@@ -22,6 +23,16 @@ interface OfferRow {
   customer_response: string | null;
   expires_at: string | null;
   last_viewed_at: string | null;
+  parent_offer_id: string | null;
+  customer_note: string | null;
+  created_by: string | null;
+}
+
+interface TeamMember {
+  member_user_id: string | null;
+  invited_email: string;
+  display_name: string | null;
+  status: string;
 }
 
 // ─── Profile type ─────────────────────────────────────────────────────────────
@@ -54,22 +65,49 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [profileResult, offersResult] = await Promise.all([
+  // ── Auto-link: if user was invited to a team, link their account ────────────
+  if (user.email) {
+    const { data: pendingMembership } = await supabase
+      .from('agency_members')
+      .select('id')
+      .eq('invited_email', user.email)
+      .is('member_user_id', null)
+      .maybeSingle();
+    if (pendingMembership) {
+      await supabase
+        .from('agency_members')
+        .update({ member_user_id: user.id, status: 'active' })
+        .eq('id', pendingMembership.id);
+    }
+  }
+
+  const [profileResult, teamResult] = await Promise.all([
     supabase
       .from('agency_profiles')
       .select('id, agency_name, agency_logo, whatsapp')
       .eq('id', user.id)
       .single<AgencyProfile>(),
     supabase
-      .from('offers')
-      .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status, customer_response, expires_at, last_viewed_at')
-      .eq('agency_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(100),
+      .from('agency_members')
+      .select('member_user_id, invited_email, display_name, status')
+      .eq('owner_id', user.id),
   ]);
 
   const profile: AgencyProfile | null = profileResult.data;
-  const offers: OfferRow[] = offersResult.data ?? [];
+  const teamMembers: TeamMember[] = (teamResult.data ?? []) as TeamMember[];
+  const memberIds = teamMembers
+    .filter(m => m.member_user_id && m.status === 'active')
+    .map(m => m.member_user_id as string);
+  const allIds = [user.id, ...memberIds];
+
+  const { data: offersData } = await supabase
+    .from('offers')
+    .select('id, client_name, destination, date_range, nights, hotels, created_at, views_count, selected_hotel, status, customer_response, expires_at, last_viewed_at, parent_offer_id, customer_note, created_by')
+    .in('agency_id', allIds)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  const offers: OfferRow[] = (offersData ?? []) as OfferRow[];
 
   const agencyLabel   = profile?.agency_name ?? user.email ?? 'Agentlik';
   const totalViews    = offers.reduce((s, o) => s + (o.views_count ?? 0), 0);
@@ -98,6 +136,17 @@ export default async function DashboardPage() {
             className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
           >
             📊 Analitika
+          </Link>
+          <Link
+            href="/dashboard/team"
+            className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 relative"
+          >
+            👥 Komanda
+            {teamMembers.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 rounded-full text-[9px] font-bold flex items-center justify-center">
+                {teamMembers.length}
+              </span>
+            )}
           </Link>
           <Link
             href="/dashboard/settings"
@@ -191,7 +240,7 @@ export default async function DashboardPage() {
                       {/* Left: offer info */}
                       <div className="flex-1 min-w-0">
 
-                        {/* Row 1: client → destination + expiry */}
+                        {/* Row 1: client → destination + expiry + alt badge */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-800 text-sm">
                             {offer.client_name}
@@ -200,6 +249,11 @@ export default async function DashboardPage() {
                           <span className="font-semibold text-slate-700 text-sm">
                             {offer.destination}
                           </span>
+                          {offer.parent_offer_id && (
+                            <span className="text-xs bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-full font-medium">
+                              ↩ Alternativ
+                            </span>
+                          )}
                           {isExpired ? (
                             <span className="text-xs bg-red-50 text-red-500 border border-red-100 px-2 py-0.5 rounded-full font-medium">
                               ⌛ Bitib
@@ -223,7 +277,7 @@ export default async function DashboardPage() {
                           )}
                         </div>
 
-                        {/* Row 3: activity badge + last viewed timestamp */}
+                        {/* Row 3: activity badge + last viewed + customer note */}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           {activityBadge}
                           {offer.last_viewed_at && (
@@ -232,14 +286,30 @@ export default async function DashboardPage() {
                             </span>
                           )}
                           <span className="text-xs text-slate-300">
-                            Yaradıldı: {formatDate(offer.created_at)}
+                            {formatDate(offer.created_at)}
                           </span>
                         </div>
+                        {/* Customer note */}
+                        {offer.customer_note && (
+                          <div className="mt-1.5 flex items-start gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 max-w-sm">
+                            <span className="text-blue-500 text-xs flex-shrink-0 mt-0.5">📝</span>
+                            <p className="text-xs text-blue-700 leading-relaxed">{offer.customer_note}</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Right: action buttons */}
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          <WhatsAppMsgButton
+                            clientName={offer.client_name}
+                            destination={offer.destination}
+                            dateRange={offer.date_range}
+                            nights={offer.nights}
+                            hotelsCount={offer.hotels?.length ?? 0}
+                            offerLink={offerUrl}
+                            waNumber={(profile?.whatsapp ?? '').replace(/\D/g, '')}
+                          />
                           <CopyButton url={offerUrl} />
                           <a
                             href={offerUrl}
@@ -256,6 +326,15 @@ export default async function DashboardPage() {
                             📋 Kopyala
                           </Link>
                         </div>
+                        {/* Alternativ yarat (shown for price_high responses) */}
+                        {offer.customer_response === 'price_high' && (
+                          <Link
+                            href={`/create?from=${offer.id}&alt=1`}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-semibold transition-colors"
+                          >
+                            ↩ Alternativ Yarat
+                          </Link>
+                        )}
                         <DeleteOfferButton offerId={offer.id} />
                       </div>
                     </div>

@@ -168,3 +168,119 @@ RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
   SET customer_response = p_response
   WHERE id = p_offer_id;
 $$;
+
+-- ============================================================
+--  V3 MIGRATION – Alternative Offers, Templates, Team, Customer Notes
+--  Run this in Supabase SQL Editor (safe to run on existing tables)
+-- ============================================================
+
+-- ── 1. New columns on offers ───────────────────────────────────────────────────
+ALTER TABLE public.offers
+  ADD COLUMN IF NOT EXISTS parent_offer_id    TEXT         REFERENCES public.offers(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_by         UUID         REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS customer_favorites JSONB        NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS customer_note      TEXT         DEFAULT NULL;
+
+-- ── 2. UPDATE policy for offers (needed to set parent_offer_id/created_by) ────
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'offers' AND policyname = 'Users update own offers'
+  ) THEN
+    CREATE POLICY "Users update own offers"
+      ON public.offers FOR UPDATE TO authenticated
+      USING (agency_id = auth.uid())
+      WITH CHECK (agency_id = auth.uid());
+  END IF;
+END $$;
+
+-- ── 3. Offer templates table ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.offer_templates (
+  id          TEXT        PRIMARY KEY DEFAULT encode(gen_random_bytes(6), 'hex'),
+  agency_id   UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name        TEXT        NOT NULL,
+  destination TEXT        NOT NULL DEFAULT '',
+  nights      INTEGER     NOT NULL DEFAULT 7,
+  includes    JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  note        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.offer_templates ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'offer_templates' AND policyname = 'Users manage own templates'
+  ) THEN
+    CREATE POLICY "Users manage own templates"
+      ON public.offer_templates FOR ALL
+      USING (agency_id = auth.uid())
+      WITH CHECK (agency_id = auth.uid());
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.offer_templates TO authenticated;
+
+-- ── 4. Agency members table ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.agency_members (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id        UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  member_user_id  UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  invited_email   TEXT        NOT NULL,
+  display_name    TEXT,
+  role            TEXT        NOT NULL DEFAULT 'agent' CHECK (role IN ('owner', 'agent')),
+  status          TEXT        NOT NULL DEFAULT 'invited' CHECK (status IN ('active', 'invited')),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.agency_members ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'agency_members' AND policyname = 'Owner manages team'
+  ) THEN
+    CREATE POLICY "Owner manages team"
+      ON public.agency_members FOR ALL
+      USING (owner_id = auth.uid())
+      WITH CHECK (owner_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'agency_members' AND policyname = 'Members read own membership'
+  ) THEN
+    CREATE POLICY "Members read own membership"
+      ON public.agency_members FOR SELECT
+      USING (member_user_id = auth.uid());
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.agency_members TO authenticated;
+
+-- ── 5. Customer-facing SECURITY DEFINER functions ─────────────────────────────
+
+CREATE OR REPLACE FUNCTION set_customer_favorites(p_offer_id TEXT, p_favorites JSONB)
+RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
+  UPDATE public.offers
+  SET customer_favorites = p_favorites
+  WHERE id = p_offer_id;
+$$;
+
+CREATE OR REPLACE FUNCTION set_customer_note(p_offer_id TEXT, p_note TEXT)
+RETURNS void LANGUAGE SQL SECURITY DEFINER AS $$
+  UPDATE public.offers
+  SET customer_note = p_note
+  WHERE id = p_offer_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION set_customer_favorites(TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION set_customer_note(TEXT, TEXT)       TO anon, authenticated;
+
+-- ── 6. Additional GRANTs (run if not done in previous migrations) ─────────────
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT ON public.offers TO anon, authenticated, service_role;
+GRANT INSERT, UPDATE, DELETE ON public.offers TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.agency_profiles TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION increment_views(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION select_offer_hotel(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION set_customer_response(TEXT, TEXT) TO anon, authenticated;

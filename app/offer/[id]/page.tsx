@@ -6,6 +6,7 @@ import WhatsAppButton from './WhatsAppButton';
 import OfferViewTracker from './OfferViewTracker';
 import CustomerResponse from './CustomerResponse';
 import HotelImage from './HotelImage';
+import CustomerNote from './CustomerNote';
 
 // Cycling fallback images used when no image is uploaded
 const FALLBACK_IMAGES = [
@@ -148,6 +149,12 @@ export default async function OfferPage({
             fallbackImage={FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
           />
         ))}
+
+        {/* Customer favourites + note */}
+        <CustomerNote
+          offerId={offer.id}
+          hotelNames={offer.hotels.map(h => h.name)}
+        />
 
         {/* Customer feedback — white card, clearly separated section */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">

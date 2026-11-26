@@ -52,6 +52,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Set extra V3 fields (parent_offer_id, created_by) via UPDATE
+    // These columns have an UPDATE policy so the user can set them on their own offer
+    if (offerId) {
+      const patch: Record<string, unknown> = { created_by: user.id };
+      if ((body as { parentOfferId?: string }).parentOfferId) {
+        patch.parent_offer_id = (body as { parentOfferId?: string }).parentOfferId;
+      }
+      await supabase
+        .from('offers')
+        .update(patch)
+        .eq('id', offerId)
+        .eq('agency_id', user.id);
+    }
+
     return NextResponse.json({ id: offerId }, { status: 201 });
   } catch (err) {
     console.error('[POST /api/offers]', err);
