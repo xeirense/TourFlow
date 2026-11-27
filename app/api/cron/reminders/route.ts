@@ -26,12 +26,27 @@ export async function GET(request: NextRequest) {
   let sent    = 0;
   const errors: string[] = [];
 
+  // Support agency_filter for test/manual runs (limits processing to one agency)
+  const agencyFilter = request.nextUrl.searchParams.get('agency_filter') ?? null;
+
+  // Record this run in cron_runs for verifiability (07:00 UTC = 11:00 Baku time)
+  const { data: runRow } = await db
+    .from('cron_runs')
+    .insert({ started_at: now.toISOString(), agency_filter: agencyFilter })
+    .select('id')
+    .single();
+  const runId: number | null = runRow?.id ?? null;
+
   try {
 
-    // ── 1. Load all agencies with their plan tier ──────────────────────────────
-    const { data: agencies } = await db
+    // ── 1. Load agencies with their plan tier (optionally filtered for test) ──
+    let agencyQuery = db
       .from('agency_profiles')
       .select('id, plan_tier, subscription_status, trial_ends_at');
+    if (agencyFilter) {
+      agencyQuery = agencyQuery.eq('id', agencyFilter);
+    }
+    const { data: agencies } = await agencyQuery;
 
     const agencyAutoReminders = new Set<string>(
       (agencies ?? [])
@@ -212,6 +227,16 @@ export async function GET(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(msg);
     console.error('[cron/reminders]', err);
+  } finally {
+    // Update cron_runs with final result
+    if (runId !== null) {
+      await db.from('cron_runs').update({
+        finished_at:   new Date().toISOString(),
+        created_count: created,
+        sent_count:    sent,
+        error:         errors.length > 0 ? errors.join('; ') : null,
+      }).eq('id', runId);
+    }
   }
 
   return NextResponse.json({ ok: true, created, sent, errors });

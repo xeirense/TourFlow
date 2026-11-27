@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import TestCronButton from './TestCronButton';
 
 interface HotelRow {
   id: string;
@@ -163,6 +164,19 @@ export default function AdminHotelsPage() {
           </div>
         </div>
       </header>
+
+      {/* Cron test section */}
+      <div className="max-w-5xl mx-auto px-4 pt-4">
+        <div className="bg-white rounded-2xl border border-slate-100 px-4 py-3 mb-4 flex items-start gap-3">
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-slate-700">Cron Xatırlatma Sistemi</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Hər gün 07:00 UTC (11:00 Bakı) işləyir. &quot;Test&quot; yalnız sizin agentliyi emal edir.
+            </p>
+          </div>
+          <TestCronButton />
+        </div>
+      </div>
 
       <div className="max-w-5xl mx-auto px-4 py-5">
         {loading ? (

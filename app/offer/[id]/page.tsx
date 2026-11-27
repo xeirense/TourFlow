@@ -305,6 +305,13 @@ function HotelCard({
           {index + 1}. Variant
         </div>
 
+        {/* Stock photo disclaimer */}
+        {hotel.imageUrl?.trim()?.includes('images.unsplash.com') && (
+          <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full">
+            Təsviri şəkil
+          </div>
+        )}
+
         {/* Stars + meal type overlay at bottom of image */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-3.5 pt-10">
           <div className="flex items-center gap-2">

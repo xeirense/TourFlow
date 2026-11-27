@@ -51,6 +51,7 @@ interface AgencyProfile extends ProfilePlanData {
   agency_name: string | null;
   agency_logo: string | null;
   whatsapp: string | null;
+  is_admin: boolean | null;
 }
 
 function formatDate(iso: string): string {
@@ -95,7 +96,7 @@ export default async function DashboardPage() {
   const [profileResult, teamResult] = await Promise.all([
     supabase
       .from('agency_profiles')
-      .select('id, agency_name, agency_logo, whatsapp, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
+      .select('id, agency_name, agency_logo, whatsapp, is_admin, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
       .eq('id', user.id)
       .maybeSingle<AgencyProfile>(),
     supabase
@@ -193,6 +194,14 @@ export default async function DashboardPage() {
               >
                 ⚙️ Profil
               </Link>
+              {profile?.is_admin && (
+                <Link
+                  href="/admin/hotels"
+                  className="text-xs text-amber-400 hover:text-amber-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+                >
+                  🔧 Admin
+                </Link>
+              )}
             </nav>
             <Link
               href="/create"
@@ -233,6 +242,14 @@ export default async function DashboardPage() {
             >
               ⚙️ Profil
             </Link>
+            {profile?.is_admin && (
+              <Link
+                href="/admin/hotels"
+                className="flex-shrink-0 text-xs text-amber-400 hover:text-amber-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+              >
+                🔧 Admin
+              </Link>
+            )}
           </nav>
         </div>
       </header>
