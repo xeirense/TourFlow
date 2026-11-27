@@ -286,7 +286,7 @@ export default async function LandingPage() {
                     </a>
                   ) : (
                     <Link
-                      href="/register"
+                      href={`/register?plan=${tier}`}
                       className={`w-full py-3 rounded-xl font-bold text-sm transition-colors text-center ${
                         isHighlighted
                           ? 'bg-teal-500 hover:bg-teal-400 text-white shadow-sm shadow-teal-200'

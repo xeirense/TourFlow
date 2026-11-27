@@ -401,3 +401,11 @@ $$;
 
 GRANT EXECUTE ON FUNCTION check_offer_limit(UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION handle_new_user()         TO service_role;
+
+-- ============================================================
+--  V5 MIGRATION – Manager name on agency_profiles
+--  Run this in Supabase SQL Editor (safe with IF NOT EXISTS)
+-- ============================================================
+
+ALTER TABLE public.agency_profiles
+  ADD COLUMN IF NOT EXISTS manager_name TEXT DEFAULT NULL;

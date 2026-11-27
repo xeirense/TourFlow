@@ -80,9 +80,10 @@ function CreatePageContent() {
     fetch('/api/auth/profile')
       .then(r => r.json())
       .then(p => {
-        if (p.agency_name) setAgencyName(p.agency_name);
-        if (p.agency_logo) setAgencyLogo(p.agency_logo);
-        if (p.whatsapp)    setManagerWhatsapp(p.whatsapp);
+        if (p.agency_name)  setAgencyName(p.agency_name);
+        if (p.agency_logo)  setAgencyLogo(p.agency_logo);
+        if (p.whatsapp)     setManagerWhatsapp(p.whatsapp);
+        if (p.manager_name) setManagerName(p.manager_name);
         setProfileLoaded(true);
       })
       .catch(() => setProfileLoaded(true));

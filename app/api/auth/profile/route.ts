@@ -29,14 +29,15 @@ export async function PUT(request: NextRequest) {
 
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
 
-    const { agencyName, agencyLogo, whatsapp } = await request.json();
+    const { agencyName, agencyLogo, whatsapp, managerName } = await request.json();
 
     // Use SSR client (carries user JWT → auth.uid() works in RLS)
     await supabase.from('agency_profiles').upsert({
-      id:          user.id,
-      agency_name: agencyName?.trim() || null,
-      agency_logo: agencyLogo?.trim() || null,
-      whatsapp:    whatsapp?.trim()   || null,
+      id:           user.id,
+      agency_name:  agencyName?.trim()  || null,
+      agency_logo:  agencyLogo?.trim()  || null,
+      whatsapp:     whatsapp?.trim()    || null,
+      manager_name: managerName?.trim() || null,
     });
 
     return NextResponse.json({ ok: true });
