@@ -14,7 +14,7 @@ function adminClient() {
 // ── POST /api/cron/reminders — Vercel Cron, daily at 07:00 UTC ───────────────
 export async function GET(request: NextRequest) {
   // Protect with CRON_SECRET
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET?.trim();
   const auth   = request.headers.get('authorization');
   if (secret && auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
