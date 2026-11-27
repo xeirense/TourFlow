@@ -7,6 +7,8 @@ export default function OfferViewTracker({ offerId }: { offerId: string }) {
 
   useEffect(() => {
     if (fired.current) return;
+    // Skip view counting in preview mode (?preview=1 — used by manager's "👁 Bax" button)
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1') return;
     fired.current = true;
 
     // Fire-and-forget: increment views_count

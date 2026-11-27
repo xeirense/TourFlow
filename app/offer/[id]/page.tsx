@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import type { Hotel, Offer } from '@/lib/types';
@@ -10,14 +11,36 @@ import CustomerResponse from './CustomerResponse';
 import HotelImage from './HotelImage';
 import CustomerNote from './CustomerNote';
 
-// Cycling fallback images used when no image is uploaded
-const FALLBACK_IMAGES = [
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
-  'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&q=80',
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-  'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&q=80',
-  'https://images.unsplash.com/photo-1455587734955-081b22074882?w=800&q=80',
-];
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const offer = await db.getOffer(id);
+  if (!offer) return { title: 'Təklif tapılmadı — TourFlow' };
+
+  const agency = offer.agencyName?.trim() || 'Səyahət Agentliyi';
+  const price  = offer.hotels[0]
+    ? `${offer.hotels[0].price.toLocaleString()} ${offer.hotels[0].currency}`
+    : '';
+
+  return {
+    title:       `${offer.destination} tur təklifi — ${agency}`,
+    description: `${offer.clientName} üçün ${offer.destination} üzrə ${offer.hotels.length} otel variantı${price ? `, ${price}-dən başlayan` : ''}. ${agency} tərəfindən hazırlanmış fərdi tur paketi.`,
+    openGraph: {
+      title:       `${offer.destination} Tur Paketi — ${agency}`,
+      description: `${offer.hotels.length} otel variantı${offer.dateRange ? `, ${offer.dateRange}` : ''}${price ? `, ${price}-dən` : ''}. TourFlow ilə hazırlanmış fərdi təklif.`,
+      type:        'website',
+    },
+  };
+}
+
+// Parse adult count from passengers string for total price calculation
+function parseAdults(passengers: string): number {
+  const m = passengers.match(/(\d+)\s*böyük/);
+  return m ? parseInt(m[1]) : 1;
+}
 
 export default async function OfferPage({
   params,
@@ -132,6 +155,10 @@ export default async function OfferPage({
             {offer.dateRange && <InfoChip icon="📅" text={offer.dateRange} />}
             {offer.nights > 0 && <InfoChip icon="🌙" text={`${offer.nights} gecə`} />}
             {offer.passengers && <InfoChip icon="👥" text={offer.passengers} />}
+            {offer.expiresAt && (() => {
+              const daysLeft = Math.ceil((new Date(offer.expiresAt!).getTime() - Date.now()) / 86_400_000);
+              return daysLeft > 0 ? <InfoChip icon="⏰" text={`${daysLeft} gün qalır`} /> : null;
+            })()}
           </div>
 
           {/* Included services */}
@@ -163,7 +190,6 @@ export default async function OfferPage({
             index={i}
             offer={offer}
             offerId={offer.id}
-            fallbackImage={FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
           />
         ))}
 
@@ -248,28 +274,31 @@ function HotelCard({
   index,
   offer,
   offerId,
-  fallbackImage,
 }: {
-  hotel: Hotel;
-  index: number;
-  offer: Offer;
+  hotel:   Hotel;
+  index:   number;
+  offer:   Offer;
   offerId: string;
-  fallbackImage: string;
 }) {
-  const imageSrc   = hotel.imageUrl?.trim() || fallbackImage;
   const symbol     = CURRENCY_SYMBOLS[hotel.currency] ?? hotel.currency;
   const mealText   = MEAL_LABELS[hotel.mealType] ?? hotel.mealType;
-  const priceLabel = hotel.priceType === 'total' ? 'Ümumi paket' : 'Nəfər başına';
+  const isPerPerson = hotel.priceType !== 'total';
+  const adults     = parseAdults(offer.passengers ?? '');
+  const totalPrice = isPerPerson ? hotel.price * adults : hotel.price;
+  const priceLabel = isPerPerson ? 'Nəfər başına' : 'Ümumi paket';
 
-  const waMessage = `Salam! Göndərdiyiniz təklifə baxdım. ${offer.destination} üzrə ${offer.dateRange} tarixləri üçün *${hotel.name}* (${hotel.price.toLocaleString()} ${symbol}) variantı ilə maraqlanıram.`;
+  const totalStr = isPerPerson && adults > 1
+    ? `, cəmi ${totalPrice.toLocaleString('az-AZ')} ${symbol}`
+    : '';
+  const waMessage = `Salam! Göndərdiyiniz təklifə baxdım. ${offer.destination} üzrə ${offer.dateRange || 'göstərilən'} tarixləri üçün *${hotel.name}* (${hotel.price.toLocaleString()} ${symbol} nəfər başına${totalStr}) variantı ilə maraqlanıram.`;
   const waNumber  = offer.managerWhatsapp.replace(/\D/g, '');
   const waUrl     = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
 
   return (
     <article className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-      {/* Hotel image */}
+      {/* Hotel image — gradient placeholder when no image uploaded */}
       <div className="relative h-[260px] w-full overflow-hidden bg-gray-100">
-        <HotelImage src={imageSrc} alt={hotel.name} fallback={fallbackImage} />
+        <HotelImage src={hotel.imageUrl?.trim() ?? ''} alt={hotel.name} stars={hotel.stars} index={index} />
 
         {/* Variant badge */}
         <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
@@ -308,12 +337,23 @@ function HotelCard({
         <div className="border-t border-gray-100" />
 
         {/* Price */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-black text-gray-900 tracking-tight">
-            {hotel.price.toLocaleString('az-AZ')}
-          </span>
-          <span className="text-2xl font-bold text-teal-600">{symbol}</span>
-          <span className="text-xs text-gray-400 ml-2 self-end pb-0.5">{priceLabel}</span>
+        <div className="space-y-1">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-black text-gray-900 tracking-tight">
+              {hotel.price.toLocaleString('az-AZ')}
+            </span>
+            <span className="text-2xl font-bold text-teal-600">{symbol}</span>
+            <span className="text-xs text-gray-400 ml-2 self-end pb-0.5">{priceLabel}</span>
+          </div>
+          {isPerPerson && adults > 1 && (
+            <p className="text-sm text-gray-500">
+              Cəmi:{' '}
+              <span className="font-bold text-gray-800">
+                {totalPrice.toLocaleString('az-AZ')} {symbol}
+              </span>
+              <span className="text-xs text-gray-400"> ({adults} nəfər)</span>
+            </p>
+          )}
         </div>
 
         {/* WhatsApp CTA */}

@@ -103,6 +103,8 @@ export async function POST(request: NextRequest) {
       if ((body as { clientPhone?: string }).clientPhone?.trim()) {
         patch.client_phone = (body as { clientPhone?: string }).clientPhone!.trim();
       }
+      const expiryDays = Math.min(30, Math.max(1, (body as { expiryDays?: number }).expiryDays ?? 3));
+      patch.expires_at = new Date(Date.now() + expiryDays * 86_400_000).toISOString();
       await supabase.from('offers').update(patch).eq('id', offerId).eq('agency_id', user.id);
 
       // Increment monthly counter (only relevant for starter, harmless for others)

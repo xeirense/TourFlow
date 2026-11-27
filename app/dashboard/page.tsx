@@ -373,9 +373,10 @@ export default async function DashboardPage() {
                           />
                           <CopyButton url={offerUrl} />
                           <a
-                            href={offerUrl}
+                            href={`${offerUrl}?preview=1`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            title="Önizləmə (baxış sayılmaz)"
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
                           >
                             👁 Bax

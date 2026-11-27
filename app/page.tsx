@@ -9,14 +9,16 @@ export const metadata = {
     'Hər müştəriyə 30 saniyədə brendlənmiş, peşəkar tur təklifi göndərin. Real vaxt analitika. WhatsApp inteqrasiyası. Müştəri rəyləri.',
 };
 
-const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '994000000000';
+const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
 export default async function LandingPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect('/dashboard');
 
-  const enterpriseWa = `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Enterprise paketi haqqında məlumat almaq istəyirəm.')}`;
+  const enterpriseWa = WA_SUPPORT
+    ? `https://wa.me/${WA_SUPPORT.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Enterprise paketi haqqında məlumat almaq istəyirəm.')}`
+    : '/register';
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">

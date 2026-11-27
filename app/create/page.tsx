@@ -9,6 +9,15 @@ import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
+// ─── Built-in seed templates (Growth+, non-deletable) ────────────────────────
+const SEED_TEMPLATES = [
+  { id: 'seed-antalya',  name: 'Antalya 7 gecə',  destination: 'Antalya, Türkiyə',   nights: 7, includes: ['flight', 'hotel', 'meal', 'transfer'] },
+  { id: 'seed-dubai',    name: 'Dubai 5 gecə',    destination: 'Dubai, BƏƏ',         nights: 5, includes: ['flight', 'hotel', 'meal'] },
+  { id: 'seed-georgia',  name: 'Gürcüstan 3 gecə', destination: 'Tbilisi, Gürcüstan', nights: 3, includes: ['hotel', 'transfer'] },
+  { id: 'seed-egypt',    name: 'Misir 7 gecə',    destination: 'Hurgada, Misir',      nights: 7, includes: ['flight', 'hotel', 'meal', 'transfer'] },
+  { id: 'seed-maldives', name: 'Maldiv 7 gecə',   destination: 'Maldiv adaları',     nights: 7, includes: ['flight', 'hotel', 'meal', 'transfer', 'insurance'] },
+];
+
 // ─── Preset hotel images ──────────────────────────────────────────────────────
 const PRESET_IMAGES = [
   { label: 'Çimərlik', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' },
@@ -31,7 +40,7 @@ interface HotelDraft {
 }
 
 function blankHotel(): HotelDraft {
-  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'USD', priceType: 'per_person', note: '' };
+  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'AZN', priceType: 'per_person', note: '' };
 }
 
 function formatDisplayDate(iso: string): string {
@@ -111,7 +120,7 @@ function CreatePageContent() {
       .catch(() => {});
   }, []);
 
-  function applyTemplate(t: OfferTemplate) {
+  function applyTemplate(t: { destination: string; nights: number; includes: string[] }) {
     setDestination(t.destination);
     setNights(String(t.nights));
     setIncludes(t.includes as string[]);
@@ -155,7 +164,10 @@ function CreatePageContent() {
   const [startDate,   setStartDate]   = useState('');
   const [endDate,     setEndDate]     = useState('');
   const [nights,      setNights]      = useState('');
-  const [passengers,  setPassengers]  = useState('');
+  const [adults,      setAdults]      = useState(2);
+  const [children,    setChildren]    = useState(0);
+  const [passengers,  setPassengers]  = useState('2 böyük');
+  const [expiryDays,  setExpiryDays]  = useState('3');
   const [includes,    setIncludes]    = useState<string[]>(['flight', 'hotel']);
 
   // ── Hotels ───────────────────────────────────────────────────────────────────
@@ -171,6 +183,14 @@ function CreatePageContent() {
     }
   }, [startDate, endDate]);
 
+  // Auto-build passengers string from adults + children counts
+  useEffect(() => {
+    const parts: string[] = [];
+    if (adults > 0) parts.push(`${adults} böyük`);
+    if (children > 0) parts.push(`${children} uşaq (2–12)`);
+    setPassengers(parts.join(', '));
+  }, [adults, children]);
+
   // Load duplicate offer data if ?from=ID is set
   useEffect(() => {
     if (!duplicateId) return;
@@ -179,8 +199,13 @@ function CreatePageContent() {
       .then(offer => {
         if (!offer || offer.error) return;
         setDestination(offer.destination ?? '');
-        setPassengers(offer.passengers  ?? '');
         setNights(String(offer.nights ?? ''));
+        // Parse adult/child counts from passengers string
+        const pax = offer.passengers ?? '';
+        const adultsMatch   = pax.match(/(\d+)\s*böyük/);
+        const childrenMatch = pax.match(/(\d+)\s*uşaq/);
+        if (adultsMatch)   setAdults(parseInt(adultsMatch[1]));
+        if (childrenMatch) setChildren(parseInt(childrenMatch[1]));
         setIncludes(offer.includes ?? ['flight', 'hotel']);
         if (offer.hotels?.length) {
           setHotels(offer.hotels.map((h: HotelDraft & { price: number }) => ({
@@ -235,6 +260,15 @@ function CreatePageContent() {
       setLoading(true);
       setSubmitErr('');
 
+      // ── Azerbaijani client-side validation ────────────────────────────────
+      if (!clientName.trim())      { setSubmitErr('Müştərinin adı tələb olunur');    setLoading(false); return; }
+      if (!destination.trim())     { setSubmitErr('İstiqamət tələb olunur');          setLoading(false); return; }
+      if (!managerWhatsapp.trim()) { setSubmitErr('Menecerin WhatsApp nömrəsi tələb olunur'); setLoading(false); return; }
+      for (const h of hotels) {
+        if (!h.name.trim()) { setSubmitErr('Otelin adı tələb olunur'); setLoading(false); return; }
+        if (!h.price || parseFloat(h.price) <= 0) { setSubmitErr(`"${h.name || 'Otel'}" üçün qiymət sıfırdan böyük olmalıdır`); setLoading(false); return; }
+      }
+
       const dateRange =
         startDate && endDate
           ? `${formatDisplayDate(startDate)} – ${formatDisplayDate(endDate)}${nights ? ` (${nights} gecə)` : ''}`
@@ -268,6 +302,7 @@ function CreatePageContent() {
             // Alternative offer linking
             parentOfferId: isAlt && duplicateId ? duplicateId : undefined,
             clientPhone:   clientPhone.trim() || undefined,
+            expiryDays:    parseInt(expiryDays) || 3,
           }),
         });
 
@@ -300,7 +335,8 @@ function CreatePageContent() {
       }
     },
     [agencyName, agencyLogo, managerName, managerWhatsapp, clientName, clientPhone,
-     destination, startDate, endDate, nights, passengers, includes, hotels, isAlt, duplicateId],
+     destination, startDate, endDate, nights, adults, children, passengers, expiryDays,
+     includes, hotels, isAlt, duplicateId],
   );
 
   function copyLink() {
@@ -332,7 +368,9 @@ function CreatePageContent() {
     setStartDate('');
     setEndDate('');
     setNights('');
-    setPassengers('');
+    setAdults(2);
+    setChildren(0);
+    setExpiryDays('3');
     setIncludes(['flight', 'hotel']);
     setHotels([blankHotel()]);
     setWaMsg('');
@@ -516,6 +554,18 @@ function CreatePageContent() {
               <span>💾</span> Şablonlar
             </h2>
             <div className="flex flex-wrap gap-2">
+              {/* Built-in seed templates — not deletable */}
+              {SEED_TEMPLATES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => applyTemplate(t)}
+                  className="flex items-center gap-1.5 bg-teal-50 border border-teal-100 rounded-xl px-3 py-1.5 text-sm font-semibold text-teal-700 hover:bg-teal-100 transition-colors"
+                >
+                  🌍 {t.name}
+                </button>
+              ))}
+              {/* User-saved templates */}
               {templates.map(t => (
                 <div key={t.id} className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl pr-1 pl-3 py-1.5">
                   <button
@@ -652,7 +702,7 @@ function CreatePageContent() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Başlama tarixi">
               <input
                 type="date"
@@ -670,34 +720,61 @@ function CreatePageContent() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Gecə sayı">
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={startDate && endDate ? 'Gecə sayı (avtomatik)' : 'Gecə sayı'}>
               <input
                 type="number"
                 min={1}
                 value={nights}
-                onChange={e => setNights(e.target.value)}
+                readOnly={!!(startDate && endDate)}
+                onChange={e => { if (!(startDate && endDate)) setNights(e.target.value); }}
                 placeholder="7"
-                className={inputCls}
+                className={`${inputCls} ${startDate && endDate ? 'bg-slate-100 cursor-default text-slate-500' : ''}`}
               />
+            </Field>
+            <Field label="Bitmə müddəti">
+              <select
+                value={expiryDays}
+                onChange={e => setExpiryDays(e.target.value)}
+                className={inputCls}
+              >
+                <option value="1">1 gün</option>
+                <option value="3">3 gün (tövsiyə)</option>
+                <option value="7">7 gün</option>
+                <option value="14">14 gün</option>
+              </select>
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Adam sayı">
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Böyüklər">
               <input
-                type="text"
-                value={passengers}
-                onChange={e => setPassengers(e.target.value)}
-                placeholder="2 böyük, 1 uşaq (3–12)"
+                type="number"
+                min={1}
+                max={20}
+                value={adults}
+                onChange={e => setAdults(Math.max(1, parseInt(e.target.value) || 1))}
                 className={inputCls}
               />
             </Field>
-            <Field label="Müştərinin WA nömrəsi (opsional)">
+            <Field label="Uşaqlar (2–12 yaş)">
+              <input
+                type="number"
+                min={0}
+                max={10}
+                value={children}
+                onChange={e => setChildren(Math.max(0, parseInt(e.target.value) || 0))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Müştərinin WA (opsional)">
               <input
                 type="tel"
                 value={clientPhone}
                 onChange={e => setClientPhone(e.target.value)}
-                placeholder="+99450XXXXXXX"
+                placeholder="+99450..."
                 className={inputCls}
               />
             </Field>
