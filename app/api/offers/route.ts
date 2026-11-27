@@ -119,6 +119,24 @@ export async function POST(request: NextRequest) {
         }).then(() => {/* fire-and-forget */});
       }
 
+      // ── Hotel learning loop ────────────────────────────────────────────────
+      type HotelPayload = {
+        catalogHotelId?: string; name?: string; city?: string; country?: string;
+        stars?: number; mealType?: string; imageUrl?: string; sharePhoto?: boolean;
+      };
+      for (const h of (body.hotels as HotelPayload[])) {
+        await supabase.rpc('track_hotel_usage', {
+          p_catalog_id: h.catalogHotelId ?? null,
+          p_name:       h.name           ?? null,
+          p_city:       h.city           ?? null,
+          p_country:    h.country        ?? null,
+          p_stars:      h.stars          ?? 5,
+          p_meal:       h.mealType       ?? 'AI',
+          p_agency_id:  user.id,
+          p_photo_url:  (h.sharePhoto && h.imageUrl) ? h.imageUrl : null,
+        }).then(() => {/* fire-and-forget */});
+      }
+
       // Increment monthly counter (only relevant for starter, harmless for others)
       if (plan.limits.monthlyOfferLimit !== null) {
         await supabase

@@ -318,12 +318,19 @@ function HotelCard({
 
       {/* Card body */}
       <div className="px-5 pb-5 pt-4 space-y-3">
-        {/* Hotel name + meal description */}
+        {/* Hotel name + location + meal */}
         <div>
           <h3 className="text-gray-900 font-extrabold text-xl leading-tight">
             {hotel.name}
           </h3>
-          <p className="text-gray-400 text-xs mt-0.5">{mealText}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {hotel.city && hotel.country && (
+              <span className="text-xs text-slate-500 flex items-center gap-0.5">
+                📍 {hotel.city}, {hotel.country}
+              </span>
+            )}
+            <span className="text-gray-400 text-xs">{mealText}</span>
+          </div>
         </div>
 
         {/* Special note */}

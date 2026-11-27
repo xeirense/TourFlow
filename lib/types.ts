@@ -30,6 +30,10 @@ export interface Hotel {
   currency: Currency;
   priceType?: PriceType;
   note?: string;
+  // Catalog enrichment (V7)
+  city?: string;
+  country?: string;
+  catalogHotelId?: string;
 }
 
 export const INCLUDES_META: { key: string; label: string; emoji: string }[] = [

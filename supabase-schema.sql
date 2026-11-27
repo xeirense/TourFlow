@@ -561,3 +561,153 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION backfill_clients_from_offers() TO service_role;
+
+-- ============================================================
+--  V7 MIGRATION – Hotel Catalog with fuzzy search
+--  Run this in Supabase SQL Editor (all safe with IF NOT EXISTS)
+-- ============================================================
+
+-- ── 0. Enable pg_trgm ────────────────────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ── 1. is_admin flag on agency_profiles ──────────────────────────────────────
+ALTER TABLE public.agency_profiles
+  ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
+
+-- ── 2. hotels table ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.hotels (
+  id              TEXT        PRIMARY KEY DEFAULT encode(gen_random_bytes(6), 'hex'),
+  name            TEXT        NOT NULL,
+  normalized_name TEXT        GENERATED ALWAYS AS (
+    lower(translate(name, 'əƏıİşŞçÇğĞöÖüÜ', 'eeiissccggoouu'))
+  ) STORED,
+  city            TEXT        NOT NULL DEFAULT '',
+  country         TEXT        NOT NULL DEFAULT '',
+  stars           INTEGER     NOT NULL DEFAULT 5 CHECK (stars BETWEEN 1 AND 5),
+  description_az  TEXT,
+  default_meal    TEXT        NOT NULL DEFAULT 'AI',
+  photos          TEXT[]      NOT NULL DEFAULT '{}',
+  lat             NUMERIC,
+  lng             NUMERIC,
+  source          TEXT        NOT NULL DEFAULT 'agency'
+                    CHECK (source IN ('seed','agency','admin')),
+  verified        BOOLEAN     NOT NULL DEFAULT false,
+  usage_count     INTEGER     NOT NULL DEFAULT 0,
+  created_by      UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  agency_id       UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.hotels ENABLE ROW LEVEL SECURITY;
+
+-- RLS: authenticated can read verified hotels + their own agency hotels
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hotels' AND policyname='Read hotels') THEN
+    CREATE POLICY "Read hotels" ON public.hotels
+      FOR SELECT USING (
+        auth.uid() IS NOT NULL AND (
+          verified = true OR agency_id = auth.uid() OR created_by = auth.uid()
+        )
+      );
+  END IF;
+END $$;
+
+-- RLS: authenticated can insert
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hotels' AND policyname='Insert hotel') THEN
+    CREATE POLICY "Insert hotel" ON public.hotels
+      FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  END IF;
+END $$;
+
+-- RLS: admins can update
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hotels' AND policyname='Admin update hotel') THEN
+    CREATE POLICY "Admin update hotel" ON public.hotels
+      FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM public.agency_profiles WHERE id = auth.uid() AND is_admin = true)
+      );
+  END IF;
+END $$;
+
+-- RLS: admins can delete
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hotels' AND policyname='Admin delete hotel') THEN
+    CREATE POLICY "Admin delete hotel" ON public.hotels
+      FOR DELETE USING (
+        EXISTS (SELECT 1 FROM public.agency_profiles WHERE id = auth.uid() AND is_admin = true)
+      );
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hotels TO authenticated, service_role;
+
+-- ── 3. Indexes ────────────────────────────────────────────────────────────────
+CREATE UNIQUE INDEX IF NOT EXISTS hotels_name_city_uniq
+  ON public.hotels (normalized_name, lower(city));
+
+CREATE INDEX IF NOT EXISTS hotels_trgm_idx
+  ON public.hotels USING GIN (normalized_name gin_trgm_ops);
+
+-- ── 4. Fuzzy search RPC ───────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION search_hotels_v7(query_text TEXT, result_limit INTEGER DEFAULT 8)
+RETURNS TABLE (
+  id TEXT, name TEXT, city TEXT, country TEXT, stars INTEGER,
+  default_meal TEXT, description_az TEXT, photos TEXT[],
+  verified BOOLEAN, usage_count INTEGER
+)
+SECURITY INVOKER LANGUAGE plpgsql AS $$
+DECLARE
+  norm_q TEXT;
+BEGIN
+  norm_q := lower(translate(query_text, 'əƏıİşŞçÇğĞöÖüÜ', 'eeiissccggoouu'));
+  RETURN QUERY
+  SELECT h.id, h.name, h.city, h.country, h.stars,
+         h.default_meal, h.description_az, h.photos,
+         h.verified, h.usage_count
+  FROM public.hotels h
+  WHERE (h.verified = true OR h.agency_id = auth.uid() OR h.created_by = auth.uid())
+    AND length(trim(norm_q)) >= 2
+    AND (h.normalized_name % norm_q OR h.normalized_name ILIKE '%' || norm_q || '%')
+  ORDER BY similarity(h.normalized_name, norm_q) DESC, h.usage_count DESC
+  LIMIT result_limit;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION search_hotels_v7(TEXT, INTEGER) TO authenticated;
+
+-- ── 5. track_hotel_usage — SECURITY DEFINER (bypasses RLS for increment/insert) ─
+CREATE OR REPLACE FUNCTION track_hotel_usage(
+  p_catalog_id  TEXT    DEFAULT NULL,
+  p_name        TEXT    DEFAULT NULL,
+  p_city        TEXT    DEFAULT NULL,
+  p_country     TEXT    DEFAULT NULL,
+  p_stars       INTEGER DEFAULT 5,
+  p_meal        TEXT    DEFAULT 'AI',
+  p_agency_id   UUID    DEFAULT NULL,
+  p_photo_url   TEXT    DEFAULT NULL
+) RETURNS VOID SECURITY DEFINER LANGUAGE plpgsql AS $$
+BEGIN
+  IF p_catalog_id IS NOT NULL THEN
+    UPDATE public.hotels SET usage_count = usage_count + 1 WHERE id = p_catalog_id;
+    IF p_photo_url IS NOT NULL AND p_photo_url <> '' THEN
+      UPDATE public.hotels
+        SET photos = array_append(photos, p_photo_url)
+        WHERE id = p_catalog_id AND NOT (photos @> ARRAY[p_photo_url]);
+    END IF;
+  ELSIF p_name IS NOT NULL AND trim(p_name) <> '' AND p_agency_id IS NOT NULL THEN
+    INSERT INTO public.hotels (name, city, country, stars, default_meal, source, verified, agency_id, created_by, photos)
+    VALUES (
+      trim(p_name), COALESCE(trim(p_city),''), COALESCE(trim(p_country),''),
+      COALESCE(p_stars,5), COALESCE(p_meal,'AI'),
+      'agency', false, p_agency_id, p_agency_id,
+      CASE WHEN p_photo_url IS NOT NULL AND p_photo_url <> ''
+           THEN ARRAY[p_photo_url] ELSE '{}'::TEXT[] END
+    )
+    ON CONFLICT (normalized_name, lower(city)) DO UPDATE
+      SET usage_count = public.hotels.usage_count + 1;
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION track_hotel_usage(TEXT,TEXT,TEXT,TEXT,INTEGER,TEXT,UUID,TEXT) TO authenticated;

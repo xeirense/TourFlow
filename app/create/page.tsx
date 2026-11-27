@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { Currency, MealType, Stars, OfferTemplate } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import ClientCombobox, { type ClientHit } from '@/app/dashboard/clients/ClientCombobox';
+import HotelCombobox, { type HotelHit } from '@/app/create/HotelCombobox';
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
@@ -38,10 +39,15 @@ interface HotelDraft {
   currency: Currency;
   priceType: 'per_person' | 'total';
   note: string;
+  // Catalog enrichment (V7)
+  city: string;
+  country: string;
+  catalogHotelId: string | null;
+  sharePhoto: boolean;
 }
 
 function blankHotel(): HotelDraft {
-  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'AZN', priceType: 'per_person', note: '' };
+  return { name: '', stars: 5, mealType: 'AI', imageUrl: '', price: '', currency: 'AZN', priceType: 'per_person', note: '', city: '', country: '', catalogHotelId: null, sharePhoto: false };
 }
 
 function formatDisplayDate(iso: string): string {
@@ -312,14 +318,18 @@ function CreatePageContent() {
             passengers: passengers.trim(),
             includes,
             hotels: hotels.map(h => ({
-              name:      h.name.trim(),
-              stars:     Number(h.stars) as Stars,
-              mealType:  h.mealType as MealType,
-              imageUrl:  h.imageUrl.trim() || undefined,
-              price:     parseFloat(h.price) || 0,
-              currency:  h.currency,
-              priceType: h.priceType,
-              note:      h.note.trim() || undefined,
+              name:           h.name.trim(),
+              stars:          Number(h.stars) as Stars,
+              mealType:       h.mealType as MealType,
+              imageUrl:       h.imageUrl.trim() || undefined,
+              price:          parseFloat(h.price) || 0,
+              currency:       h.currency,
+              priceType:      h.priceType,
+              note:           h.note.trim() || undefined,
+              city:           h.city.trim() || undefined,
+              country:        h.country.trim() || undefined,
+              catalogHotelId: h.catalogHotelId ?? undefined,
+              sharePhoto:     h.sharePhoto && !!h.imageUrl,
             })),
             // Alternative offer linking
             parentOfferId: isAlt && duplicateId ? duplicateId : undefined,
@@ -921,8 +931,8 @@ const inputCls =
   'w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition';
 
 interface HotelBlockProps {
-  index: number;
-  hotel: HotelDraft;
+  index:    number;
+  hotel:    HotelDraft;
   onChange: (patch: Partial<HotelDraft>) => void;
   onRemove?: () => void;
 }
@@ -964,13 +974,22 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-2">
           <Field label="Otelin adı *">
-            <input
-              type="text"
-              required
+            <HotelCombobox
               value={hotel.name}
-              onChange={e => onChange({ name: e.target.value })}
-              placeholder="Regnum Carya Hotel"
-              className={inputCls}
+              selectedId={hotel.catalogHotelId}
+              inputClassName={inputCls}
+              onChange={name => onChange({ name, catalogHotelId: null, city: '', country: '' })}
+              onClear={() => onChange({ catalogHotelId: null })}
+              onSelect={(h: HotelHit) => onChange({
+                name:           h.name,
+                stars:          h.stars as 3 | 4 | 5,
+                mealType:       h.default_meal,
+                city:           h.city,
+                country:        h.country,
+                catalogHotelId: h.id,
+                note:           h.description_az ?? hotel.note,
+                imageUrl:       (h.photos[0] ?? hotel.imageUrl),
+              })}
             />
           </Field>
         </div>
@@ -984,6 +1003,28 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
             <option value={4}>4 ★</option>
             <option value={5}>5 ★</option>
           </select>
+        </Field>
+      </div>
+
+      {/* City / Country (auto-filled from catalog, editable) */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Şəhər">
+          <input
+            type="text"
+            value={hotel.city}
+            onChange={e => onChange({ city: e.target.value })}
+            placeholder="Belek"
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Ölkə">
+          <input
+            type="text"
+            value={hotel.country}
+            onChange={e => onChange({ country: e.target.value })}
+            placeholder="Türkiyə"
+            className={inputCls}
+          />
         </Field>
       </div>
 
@@ -1087,6 +1128,21 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
           placeholder="Və ya şəkil URL-i yapışdırın..."
           className={inputCls}
         />
+
+        {/* Photo share checkbox — only for uploaded photos (not Unsplash presets) */}
+        {hotel.imageUrl && !hotel.imageUrl.startsWith('https://images.unsplash.com') && (
+          <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
+            <input
+              type="checkbox"
+              checked={hotel.sharePhoto}
+              onChange={e => onChange({ sharePhoto: e.target.checked })}
+              className="w-3.5 h-3.5 rounded accent-teal-500"
+            />
+            <span className="text-xs text-slate-500">
+              Bu şəkli digər agentliklərlə paylaş (kataloqa əlavə et)
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Note */}
