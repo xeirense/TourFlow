@@ -13,6 +13,8 @@ export interface HotelHit {
   photos: string[];
   verified: boolean;
   usage_count: number;
+  chain: string | null;
+  aliases: string[];
 }
 
 interface Props {

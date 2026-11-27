@@ -789,3 +789,28 @@ WHERE o.client_id IS NOT NULL
       AND ca.type = 'offer_sent'
       AND (ca.payload->>'offer_id') = o.id::text
   );
+
+-- ============================================================
+--  V9 MIGRATION – Telegram Integration
+--  Run AFTER V8 migration.  All statements are idempotent.
+-- ============================================================
+
+-- ── 1. Add telegram_chat_id column to agency_profiles ────────────────────────
+ALTER TABLE public.agency_profiles
+  ADD COLUMN IF NOT EXISTS telegram_chat_id BIGINT;
+
+-- ── 2. telegram_connect_tokens — one-time 15-min link tokens ─────────────────
+CREATE TABLE IF NOT EXISTS public.telegram_connect_tokens (
+  token       TEXT        PRIMARY KEY,
+  agency_id   UUID        NOT NULL REFERENCES public.agency_profiles(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at  TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes')
+);
+
+GRANT SELECT, INSERT, DELETE ON public.telegram_connect_tokens TO service_role;
+
+CREATE INDEX IF NOT EXISTS idx_telegram_tokens_agency
+  ON public.telegram_connect_tokens (agency_id);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_tokens_expires
+  ON public.telegram_connect_tokens (expires_at);

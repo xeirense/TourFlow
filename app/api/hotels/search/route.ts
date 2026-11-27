@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
 
-    const { data, error } = await supabase.rpc('search_hotels_v7', {
+    const { data, error } = await supabase.rpc('search_hotels_v10', {
       query_text:   q,
       result_limit: 8,
     });

@@ -61,16 +61,20 @@ export async function GET(request: NextRequest) {
         .map(a => a.id as string)
     );
 
-    // ── Helper: insert reminder if not already exists for this client+kind ─────
+    // ── Helper: insert reminder if not already active for this manager+kind ─────
+    // Uses dedupe_key (kind) + partial unique index to prevent duplicates
     async function maybeCreateReminder(
       clientId: string, managerId: string, dueAt: Date, kind: string, text: string
     ) {
+      // The partial unique index idx_reminders_active_dedupe prevents inserting duplicate
+      // active reminders (WHERE done_at IS NULL AND dedupe_key IS NOT NULL).
+      // We also check explicitly to avoid unnecessary inserts.
       const { count } = await db
         .from('reminders')
         .select('id', { count: 'exact', head: true })
-        .eq('client_id', clientId)
-        .eq('kind', kind)
-        .gte('created_at', new Date(now.getTime() - 7 * 86_400_000).toISOString()); // no duplicate in past 7 days
+        .eq('manager_id', managerId)
+        .eq('dedupe_key', kind)
+        .is('done_at', null);
 
       if ((count ?? 0) > 0) return;
 
@@ -80,6 +84,7 @@ export async function GET(request: NextRequest) {
         due_at:     dueAt.toISOString(),
         kind,
         text,
+        dedupe_key: kind,
       });
       created++;
     }
@@ -88,14 +93,19 @@ export async function GET(request: NextRequest) {
     const cutoff24h = new Date(now.getTime() - 24 * 3600_000).toISOString();
     const { data: unviewedOffers } = await db
       .from('offers')
-      .select('id, client_id, client_name, agency_id, created_by, destination')
+      .select('id, client_id, client_name, agency_id, created_by, destination, expires_at')
       .lt('created_at', cutoff24h)
       .eq('views_count', 0)
       .not('client_id', 'is', null)
-      .not('agency_id', 'is', null);
+      .not('agency_id', 'is', null)
+      // Skip offers that are already resolved — only unresolved statuses need a nudge
+      .not('customer_response', 'in', '("not_interested","interested")')
+      .not('selected_hotel', 'is not', null); // skip if hotel already selected
 
     for (const offer of (unviewedOffers ?? [])) {
       if (!agencyAutoReminders.has(offer.agency_id)) continue;
+      // Skip expired offers
+      if (offer.expires_at && new Date(offer.expires_at) < now) continue;
       const managerId = offer.created_by ?? offer.agency_id;
       await maybeCreateReminder(
         offer.client_id,
@@ -110,15 +120,18 @@ export async function GET(request: NextRequest) {
     const cutoff48h = new Date(now.getTime() - 48 * 3600_000).toISOString();
     const { data: viewedNoReply } = await db
       .from('offers')
-      .select('id, client_id, client_name, agency_id, created_by, destination, last_viewed_at')
+      .select('id, client_id, client_name, agency_id, created_by, destination, last_viewed_at, expires_at')
       .lt('last_viewed_at', cutoff48h)
       .gt('views_count', 0)
       .is('customer_response', null)
+      .is('selected_hotel', null) // skip if hotel already selected
       .not('client_id', 'is', null)
       .not('agency_id', 'is', null);
 
     for (const offer of (viewedNoReply ?? [])) {
       if (!agencyAutoReminders.has(offer.agency_id)) continue;
+      // Skip expired offers
+      if (offer.expires_at && new Date(offer.expires_at) < now) continue;
       const managerId = offer.created_by ?? offer.agency_id;
       await maybeCreateReminder(
         offer.client_id,
@@ -156,16 +169,17 @@ export async function GET(request: NextRequest) {
     const nineMonthsAgoCeil = new Date(now.getTime() - 263 * 86_400_000).toISOString(); // ±7d window
     const { data: tripDoneActivities } = await db
       .from('client_activities')
-      .select('client_id, payload, clients(agency_owner_id, assigned_manager_id, full_name)')
+      .select('client_id, payload, clients(agency_owner_id, assigned_manager_id, full_name, do_not_contact)')
       .eq('type', 'trip_done')
       .gte('created_at', nineMonthsAgo)
       .lte('created_at', nineMonthsAgoCeil);
 
     for (const act of (tripDoneActivities ?? [])) {
-      const clientsArr = act.clients as unknown as { agency_owner_id: string; assigned_manager_id: string | null; full_name: string }[] | null;
+      const clientsArr = act.clients as unknown as { agency_owner_id: string; assigned_manager_id: string | null; full_name: string; do_not_contact: boolean }[] | null;
       const c = Array.isArray(clientsArr) ? (clientsArr[0] ?? null) : null;
       if (!c) continue;
       if (!agencyAutoReminders.has(c.agency_owner_id)) continue;
+      if (c.do_not_contact) continue; // skip clients who opted out
       const managerId = c.assigned_manager_id ?? c.agency_owner_id;
       const destination = (act.payload as { destination?: string })?.destination ?? '';
       await maybeCreateReminder(
@@ -185,11 +199,12 @@ export async function GET(request: NextRequest) {
 
     const { data: bdayClients } = await db
       .from('clients')
-      .select('id, full_name, agency_owner_id, assigned_manager_id, birthday')
+      .select('id, full_name, agency_owner_id, assigned_manager_id, birthday, do_not_contact')
       .not('birthday', 'is', null);
 
     for (const c of (bdayClients ?? [])) {
       if (!c.birthday) continue;
+      if (c.do_not_contact) continue; // skip clients who opted out
       const [, bMonth, bDay] = (c.birthday as string).split('-');
       if (bMonth !== monthStr || bDay !== dayStr) continue;
       if (!agencyAutoReminders.has(c.agency_owner_id)) continue;
@@ -216,9 +231,13 @@ export async function GET(request: NextRequest) {
       if (!user?.email) continue;
 
       await notify({
-        to:      user.email,
-        subject: `TourFlow: ${reminder.text}`,
-        body:    reminder.text,
+        to:           user.email,
+        subject:      `TourFlow: ${reminder.text}`,
+        body:         reminder.text,
+        managerId:    reminder.manager_id,
+        telegramText: `🔔 ${reminder.text}`,
+        priority:     'NORMAL',
+        notifKind:    `reminder:${reminder.id}`,
       });
       sent++;
     }

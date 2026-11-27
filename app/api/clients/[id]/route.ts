@@ -87,6 +87,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.preferredStars        !== undefined) patch.preferred_stars        = body.preferredStars ?? null;
     if (body.preferredMeal         !== undefined) patch.preferred_meal         = body.preferredMeal  ?? null;
     if (body.assignedManagerId     !== undefined) patch.assigned_manager_id    = body.assignedManagerId ?? null;
+    if (body.doNotContact          !== undefined) patch.do_not_contact         = !!body.doNotContact;
 
     const { data, error } = await supabase.from('clients').update(patch).eq('id', id).select().single();
     if (error) throw error;

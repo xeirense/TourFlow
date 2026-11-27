@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
@@ -8,6 +8,7 @@ import type { Currency, MealType, Stars, OfferTemplate } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import ClientCombobox, { type ClientHit } from '@/app/dashboard/clients/ClientCombobox';
 import HotelCombobox, { type HotelHit } from '@/app/create/HotelCombobox';
+import { normalizePhone } from '@/lib/phone';
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
@@ -165,10 +166,24 @@ function CreatePageContent() {
     setDeletingTemplId(null);
   }
 
+  // ── Mobile keyboard detection (visualViewport) ───────────────────────────────
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function onResize() {
+      setKeyboardOpen((vv!.height ?? window.innerHeight) < window.innerHeight * 0.75);
+    }
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   // ── Trip ─────────────────────────────────────────────────────────────────────
   const [clientName,     setClientName]     = useState('');
   const [clientPhone,    setClientPhone]    = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [dupClient, setDupClient] = useState<{ id: string; name: string } | null>(null);
+  const dupTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [destination, setDestination] = useState('');
   const [startDate,   setStartDate]   = useState('');
   const [endDate,     setEndDate]     = useState('');
@@ -199,6 +214,27 @@ function CreatePageContent() {
     if (children > 0) parts.push(`${children} uşaq (2–12)`);
     setPassengers(parts.join(', '));
   }, [adults, children]);
+
+  // Debounced duplicate phone check — skip if a client is already selected
+  useEffect(() => {
+    if (selectedClientId) { setDupClient(null); return; }
+    clearTimeout(dupTimer.current);
+    const norm = normalizePhone(clientPhone);
+    if (norm.length < 10) { setDupClient(null); return; }
+    dupTimer.current = setTimeout(async () => {
+      try {
+        const res  = await fetch(`/api/clients?phone_exact=${encodeURIComponent(norm)}`);
+        const data = await res.json();
+        if (data?.id) {
+          setDupClient({ id: data.id, name: data.full_name });
+        } else {
+          setDupClient(null);
+        }
+      } catch { setDupClient(null); }
+    }, 600);
+    return () => clearTimeout(dupTimer.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientPhone, selectedClientId]);
 
   // Load duplicate offer data if ?from=ID is set
   useEffect(() => {
@@ -819,6 +855,31 @@ function CreatePageContent() {
             </Field>
           </div>
 
+          {/* Duplicate phone notice */}
+          {dupClient && !selectedClientId && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+              <p className="text-xs text-amber-800">
+                ⚠️ Bu nömrə artıq <strong>{dupClient.name}</strong> kartında var.
+              </p>
+              <div className="flex gap-2 flex-shrink-0">
+                <a
+                  href={`/dashboard/clients/${dupClient.id}`}
+                  target="_blank"
+                  className="text-xs font-semibold text-teal-700 hover:underline"
+                >
+                  Kartı aç
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setDupClient(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Yenə də yeni kart
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Includes checkboxes */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
@@ -873,13 +934,14 @@ function CreatePageContent() {
           )}
         </div>
 
-        {/* ── Error & Submit ───────────────────────────────────────────── */}
+        {/* ── Error ──────────────────────────────────────────────────── */}
         {submitErr && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
             ⚠️ {submitErr}
           </div>
         )}
 
+        {/* Inline submit button (always visible in form flow) */}
         <button
           type="submit"
           disabled={loading}
@@ -895,6 +957,23 @@ function CreatePageContent() {
           )}
         </button>
       </form>
+
+      {/* Sticky bottom submit bar — hidden when mobile keyboard is open */}
+      {!keyboardOpen && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-[#0F172A]/95 backdrop-blur-sm border-t border-white/5 px-4 py-3 safe-area-pb md:hidden">
+          <button
+            form="create-form"
+            type="submit"
+            disabled={loading}
+            onClick={() => { const f = document.querySelector('form'); f?.requestSubmit(); }}
+            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white text-sm font-bold shadow-lg transition-all active:scale-[.98]"
+          >
+            {loading
+              ? '⏳ Hazırlanır...'
+              : isAlt ? '↩ Alternativ Linkini Yarat' : '⚡ Təklif Linkini Yarat'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -937,8 +1016,29 @@ interface HotelBlockProps {
   onRemove?: () => void;
 }
 
+interface LastPrice {
+  price: number;
+  currency: string;
+  priceType: string;
+  mealType: string | null;
+  offeredAt: string;
+}
+
 function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
-  const [uploading, setUploading] = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const [lastPrice,  setLastPrice]  = useState<LastPrice | null>(null);
+
+  // Fetch last price when a catalog hotel is selected
+  useEffect(() => {
+    if (!hotel.catalogHotelId && !hotel.name) { setLastPrice(null); return; }
+    const params = hotel.catalogHotelId
+      ? `hotelId=${encodeURIComponent(hotel.catalogHotelId)}`
+      : `name=${encodeURIComponent(hotel.name)}&city=${encodeURIComponent(hotel.city ?? '')}`;
+    fetch(`/api/hotels/last-price?${params}`)
+      .then(r => r.json())
+      .then(d => setLastPrice(d ?? null))
+      .catch(() => setLastPrice(null));
+  }, [hotel.catalogHotelId, hotel.name, hotel.city]);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1028,18 +1128,31 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
         </Field>
       </div>
 
-      {/* Meal type */}
-      <Field label="Qidalanma tipi">
-        <select
-          value={hotel.mealType}
-          onChange={e => onChange({ mealType: e.target.value })}
-          className={inputCls}
-        >
-          {(Object.entries(MEAL_LABELS) as [MealType, string][]).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+      {/* Meal type — quick chips */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+          Qidalanma tipi
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(MEAL_LABELS) as MealType[]).map(k => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => onChange({ mealType: k })}
+              className={`min-h-[44px] px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
+                hotel.mealType === k
+                  ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+              }`}
+            >
+              {k}
+            </button>
           ))}
-        </select>
-      </Field>
+        </div>
+        <p className="text-xs text-slate-400 mt-1">
+          {MEAL_LABELS[hotel.mealType as MealType] ?? hotel.mealType}
+        </p>
+      </div>
 
       {/* Price, Currency & Price type */}
       <div className="grid grid-cols-3 gap-3">
@@ -1079,6 +1192,33 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
           </select>
         </Field>
       </div>
+
+      {/* Last-price hint */}
+      {lastPrice && !hotel.price && (() => {
+        const daysAgo = Math.floor((Date.now() - new Date(lastPrice.offeredAt).getTime()) / 86_400_000);
+        const isOld   = daysAgo > 60;
+        return (
+          <button
+            type="button"
+            onClick={() => onChange({
+              price:     String(lastPrice.price),
+              currency:  lastPrice.currency as Currency,
+              priceType: lastPrice.priceType as 'per_person' | 'total',
+              ...(lastPrice.mealType ? { mealType: lastPrice.mealType } : {}),
+            })}
+            className={`w-full text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+              isOld
+                ? 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
+            }`}
+          >
+            💡 Son qiymət: <strong>{lastPrice.price} {lastPrice.currency}</strong>
+            {lastPrice.priceType === 'per_person' ? ' / nəfər' : ' ümumi'}
+            {lastPrice.mealType ? ` · ${lastPrice.mealType}` : ''}
+            <span className="ml-1 text-slate-400">({daysAgo} gün əvvəl{isOld ? ' — köhnəlib' : ''})</span>
+          </button>
+        );
+      })()}
 
       {/* Image section */}
       <div className="space-y-2">

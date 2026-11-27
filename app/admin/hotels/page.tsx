@@ -18,6 +18,8 @@ interface HotelRow {
   verified: boolean;
   usage_count: number;
   created_at: string;
+  chain: string | null;
+  aliases: string[];
 }
 
 interface EditState {
@@ -28,6 +30,8 @@ interface EditState {
   stars: number;
   default_meal: string;
   description_az: string;
+  chain: string;
+  aliases: string; // comma-separated
 }
 
 export default function AdminHotelsPage() {
@@ -94,6 +98,11 @@ export default function AdminHotelsPage() {
   async function handleSave() {
     if (!editRow) return;
     setSaving(true);
+    const aliasArr = editRow.aliases
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
     await supabase.from('hotels').update({
       name:           editRow.name,
       city:           editRow.city,
@@ -101,12 +110,16 @@ export default function AdminHotelsPage() {
       stars:          editRow.stars,
       default_meal:   editRow.default_meal,
       description_az: editRow.description_az || null,
+      chain:          editRow.chain.trim() || null,
+      aliases:        aliasArr,
     }).eq('id', editRow.id);
 
     setHotels(prev => prev.map(h => h.id === editRow.id
       ? { ...h, name: editRow.name, city: editRow.city, country: editRow.country,
           stars: editRow.stars, default_meal: editRow.default_meal,
-          description_az: editRow.description_az || null }
+          description_az: editRow.description_az || null,
+          chain: editRow.chain.trim() || null,
+          aliases: aliasArr }
       : h
     ));
     setEditRow(null);
@@ -236,6 +249,8 @@ export default function AdminHotelsPage() {
                         id: h.id, name: h.name, city: h.city, country: h.country,
                         stars: h.stars, default_meal: h.default_meal,
                         description_az: h.description_az ?? '',
+                        chain: h.chain ?? '',
+                        aliases: (h.aliases ?? []).join(', '),
                       })}
                       className="text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1 transition-colors"
                     >
@@ -305,7 +320,7 @@ export default function AdminHotelsPage() {
                   onChange={e => setEditRow(prev => prev ? { ...prev, default_meal: e.target.value } : null)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none"
                 >
-                  {['BB','HB','FB','AI','UAI'].map(m => <option key={m} value={m}>{m}</option>)}
+                  {['RO','BB','HB','FB','AI','UAI'].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
             </div>
@@ -317,6 +332,28 @@ export default function AdminHotelsPage() {
                 onChange={e => setEditRow(prev => prev ? { ...prev, description_az: e.target.value } : null)}
                 rows={2}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Zəncir (chain)</label>
+              <input
+                type="text"
+                value={editRow.chain}
+                onChange={e => setEditRow(prev => prev ? { ...prev, chain: e.target.value } : null)}
+                placeholder="Rixos, Hilton..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Aliaslar (vergüllə ayırın)</label>
+              <input
+                type="text"
+                value={editRow.aliases}
+                onChange={e => setEditRow(prev => prev ? { ...prev, aliases: e.target.value } : null)}
+                placeholder="Sungate, Rixos Kemer..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 

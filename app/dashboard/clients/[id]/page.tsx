@@ -51,6 +51,17 @@ export default function ClientProfilePage() {
   const [noteText,  setNoteText]  = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
+  // Do-not-contact toggle
+  const [doNotContact, setDoNotContact] = useState(false);
+  async function toggleDoNotContact(val: boolean) {
+    setDoNotContact(val);
+    await fetch(`/api/clients/${id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ doNotContact: val }),
+    });
+  }
+
   // Edit preferences
   const [showPrefs,      setShowPrefs]      = useState(false);
   const [prefNotes,      setPrefNotes]      = useState('');
@@ -90,6 +101,7 @@ export default function ClientProfilePage() {
         createdAt:            c.created_at,
       };
       setClient(mapped);
+      setDoNotContact(c.do_not_contact ?? false);
       setOffers(data.offers ?? []);
       setReminders((data.reminders ?? []).map((r: Record<string, unknown>) => ({
         id:        r.id,
@@ -318,6 +330,25 @@ export default function ClientProfilePage() {
           {client.notes && (
             <p className="text-xs text-slate-500 italic mt-3 border-t border-slate-100 pt-3">{client.notes}</p>
           )}
+
+          {/* Do-not-contact toggle */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+            <div>
+              <p className="text-xs font-semibold text-slate-700">Əlaqə etmə</p>
+              <p className="text-xs text-slate-400">Aktiv edildikdə avtomatik xatırlatmalar göndərilmir</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleDoNotContact(!doNotContact)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                doNotContact ? 'bg-red-500' : 'bg-slate-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                doNotContact ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
         </div>
 
         {/* Action buttons */}

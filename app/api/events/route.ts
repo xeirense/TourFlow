@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase as adminClient } from '@/lib/supabase';
-import { sendNotification } from '@/lib/email';
+import { notify } from '@/lib/notify';
 
 async function getManagerEmail(agencyId: string): Promise<string | null> {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       // Atomically increment views_count + set last_viewed_at via RPC
       await adminClient.rpc('increment_views', { offer_id: offerId });
 
-      // First-view notification: query after increment — views_count === 1 means first open
+      // Notification: HIGH on first view, NORMAL (rate-limited) on subsequent views
       void (async () => {
         try {
           const { data: offer } = await adminClient
@@ -32,19 +32,34 @@ export async function POST(request: NextRequest) {
             .eq('id', offerId)
             .single();
 
-          if (offer?.views_count !== 1 || !offer?.agency_id) return;
+          if (!offer?.agency_id) return;
 
+          const isFirstView = offer.views_count === 1;
           const email = await getManagerEmail(offer.agency_id);
           if (!email) return;
 
-          await sendNotification({
-            to: email,
-            subject: `TourFlow: ${offer.client_name} təklifinizə baxdı`,
-            body: `
-              <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
-              göndərdiyiniz təklifi <strong>ilk dəfə açdı</strong>.</p>
-              <p style="color:#64748b;font-size:13px">Dashboard-da cavabı izləyin.</p>
-            `,
+          await notify({
+            to:           email,
+            subject:      isFirstView
+              ? `TourFlow: ${offer.client_name} təklifinizə baxdı`
+              : `TourFlow: ${offer.client_name} yenidən baxdı`,
+            body: isFirstView
+              ? `
+                <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
+                göndərdiyiniz təklifi <strong>ilk dəfə açdı</strong>.</p>
+                <p style="color:#64748b;font-size:13px">Dashboard-da cavabı izləyin.</p>
+              `
+              : `
+                <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
+                təklifinizə <strong>yenidən baxdı</strong> (cəmi ${offer.views_count} baxış).</p>
+              `,
+            managerId:    offer.agency_id,
+            telegramText: isFirstView
+              ? `👁 ${offer.client_name} təklifinizə ilk dəfə baxdı (${offer.destination})`
+              : `👁 ${offer.client_name} yenidən baxdı — ${offer.views_count} baxış (${offer.destination})`,
+            priority:     isFirstView ? 'HIGH' : 'NORMAL',
+            offerId:      offerId,
+            notifKind:    'view',
           });
         } catch (err) {
           console.error('[events/view/notify]', err);
@@ -58,6 +73,14 @@ export async function POST(request: NextRequest) {
         p_hotel_name: hotelName ?? '',
       });
       if (error) console.error('[events/whatsapp_click]', error.message);
+
+      // Auto-close open reminders for this offer when customer selects a hotel
+      void adminClient
+        .from('reminders')
+        .update({ done_at: new Date().toISOString() })
+        .like('kind', `%:${offerId}`)
+        .is('done_at', null)
+        .then(({ error: e }) => { if (e) console.error('[whatsapp_click/auto-close]', e.message); });
 
       // Hot-lead notification: customer clicked WhatsApp for a specific hotel
       void (async () => {
@@ -73,9 +96,9 @@ export async function POST(request: NextRequest) {
           const email = await getManagerEmail(offer.agency_id);
           if (!email) return;
 
-          await sendNotification({
-            to: email,
-            subject: `🔥 TourFlow: ${offer.client_name} WhatsApp-a keçdi!`,
+          await notify({
+            to:           email,
+            subject:      `🔥 TourFlow: ${offer.client_name} WhatsApp-a keçdi!`,
             body: `
               <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
               <strong>${hotelName ?? 'bir oteli'}</strong> seçib WhatsApp-a keçdi.</p>
@@ -84,6 +107,9 @@ export async function POST(request: NextRequest) {
               </p>
               <p style="color:#64748b;font-size:13px">Mümkün qədər tez cavab verin.</p>
             `,
+            managerId:    offer.agency_id,
+            telegramText: `🔥 ${offer.client_name} WhatsApp-a keçdi! Otel: ${hotelName ?? '—'} (${offer.destination})`,
+            priority:     'HIGH',
           });
         } catch (err) {
           console.error('[events/whatsapp_click/notify]', err);

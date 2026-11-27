@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { normalizePhone } from '@/lib/phone';
 import type { ClientSource } from '@/lib/types';
 
 // ── GET /api/clients — list clients for current agency ──────────────────────
@@ -10,10 +11,23 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const q       = searchParams.get('q')?.trim()     ?? '';
-    const tag     = searchParams.get('tag')           ?? '';
-    const source  = searchParams.get('source')        ?? '';
-    const limit   = Math.min(200, parseInt(searchParams.get('limit') ?? '100', 10));
+    const q           = searchParams.get('q')?.trim()           ?? '';
+    const phoneExact  = searchParams.get('phone_exact')?.trim() ?? '';
+    const tag         = searchParams.get('tag')                 ?? '';
+    const source      = searchParams.get('source')              ?? '';
+    const limit       = Math.min(200, parseInt(searchParams.get('limit') ?? '100', 10));
+
+    // Exact phone match check (used by create page for duplicate detection)
+    if (phoneExact) {
+      const norm = normalizePhone(phoneExact);
+      const { data: match } = await supabase
+        .from('clients')
+        .select('id, full_name')
+        .eq('agency_owner_id', user.id)
+        .eq('normalized_phone', norm)
+        .maybeSingle();
+      return NextResponse.json(match ?? null);
+    }
 
     let query = supabase
       .from('clients')
@@ -86,11 +100,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Müştərinin adı tələb olunur' }, { status: 400 });
     }
 
+    const normalizedPhone = phone?.trim() ? normalizePhone(phone.trim()) : '';
+
+    // Duplicate phone check: if a client with this normalized phone already exists for this agency, return 409
+    if (normalizedPhone) {
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id, full_name')
+        .eq('agency_owner_id', user.id)
+        .eq('normalized_phone', normalizedPhone)
+        .maybeSingle();
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'duplicate_phone', existingId: existing.id, existingName: existing.full_name },
+          { status: 409 },
+        );
+      }
+    }
+
     const { data, error } = await supabase.from('clients').insert({
       agency_owner_id:        user.id,
       assigned_manager_id:    assignedManagerId ?? null,
       full_name:              fullName.trim(),
-      phone:                  phone?.trim() ?? '',
+      phone:                  normalizedPhone || phone?.trim() || '',
       email:                  email?.trim()   || null,
       birthday:               birthday        || null,
       notes:                  notes?.trim()   || null,

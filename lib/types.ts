@@ -2,9 +2,10 @@
 
 export type Currency = 'AZN' | 'USD' | 'EUR';
 export type Stars = 3 | 4 | 5;
-export type MealType = 'BB' | 'HB' | 'FB' | 'AI' | 'UAI';
+export type MealType = 'RO' | 'BB' | 'HB' | 'FB' | 'AI' | 'UAI';
 
 export const MEAL_LABELS: Record<MealType, string> = {
+  RO:  'Yalnız otaq (RO)',
   BB:  'Səhər yeməyi (BB)',
   HB:  'Yarım pansion (HB)',
   FB:  'Tam pansion (FB)',

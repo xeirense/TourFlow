@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase as adminClient } from '@/lib/supabase';
-import { sendNotification } from '@/lib/email';
+import { createClient } from '@supabase/supabase-js';
+import { notify } from '@/lib/notify';
+
+// Admin client — bypasses RLS for auto-close of reminders (server-side, cron-like)
+function adminDb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+    { auth: { persistSession: false } },
+  );
+}
+const adminClient = adminDb();
 
 const VALID_RESPONSES = ['interested', 'not_interested', 'price_high'] as const;
 type ValidResponse = typeof VALID_RESPONSES[number];
@@ -34,6 +44,14 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Auto-close open reminders related to this offer (kind ends with :<offerId>)
+    void adminClient
+      .from('reminders')
+      .update({ done_at: new Date().toISOString() })
+      .like('kind', `%:${id}`)
+      .is('done_at', null)
+      .then(({ error: e }) => { if (e) console.error('[response/auto-close-reminders]', e.message); });
+
     // ── Notify manager via email (non-critical — fire and don't block) ─────────
     void (async () => {
       try {
@@ -49,15 +67,18 @@ export async function POST(
         const managerEmail = userData?.user?.email;
         if (!managerEmail) return;
 
-        await sendNotification({
-          to: managerEmail,
-          subject: `TourFlow: ${offer.client_name} cavab verdi`,
+        await notify({
+          to:           managerEmail,
+          subject:      `TourFlow: ${offer.client_name} cavab verdi`,
           body: `
             <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
             təklifinizə cavab verdi:</p>
             <p style="font-size:20px;font-weight:700;margin:16px 0">${RESPONSE_LABELS[response as ValidResponse]}</p>
             <p style="color:#64748b;font-size:13px">TourFlow Dashboard-da ətraflı məlumat əldə edin.</p>
           `,
+          managerId:    offer.agency_id,
+          telegramText: `${RESPONSE_LABELS[response as ValidResponse]} — ${offer.client_name} cavab verdi (${offer.destination})`,
+          priority:     'HIGH',
         });
       } catch (notifyErr) {
         console.error('[response/notify]', notifyErr);

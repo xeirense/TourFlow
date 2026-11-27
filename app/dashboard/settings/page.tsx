@@ -262,9 +262,283 @@ export default function SettingsPage() {
           </button>
         </form>
 
+        {/* ── Telegram bildirişləri ─────────────────────────────────────────── */}
+        <TelegramSection />
+
+        {/* ── Bildiriş Parametrləri ─────────────────────────────────────────── */}
+        <NotificationSettingsSection />
+
         {/* ── Change password ───────────────────────────────────────────────── */}
         <ChangePasswordSection />
       </div>
+    </div>
+  );
+}
+
+function TelegramSection() {
+  const [status,     setStatus]     = useState<'loading' | 'connected' | 'disconnected'>('loading');
+  const [chatId,     setChatId]     = useState<number | null>(null);
+  const [deepLink,   setDeepLink]   = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [testing,    setTesting]    = useState(false);
+  const [testOk,     setTestOk]     = useState(false);
+  const [tgError,    setTgError]    = useState('');
+
+  function refreshStatus() {
+    fetch('/api/admin/telegram-settings')
+      .then(r => r.json())
+      .then(d => {
+        setStatus(d.connected ? 'connected' : 'disconnected');
+        setChatId(d.chatId ?? null);
+      })
+      .catch(() => setStatus('disconnected'));
+  }
+
+  useEffect(() => { refreshStatus(); }, []);
+
+  async function handleConnect() {
+    setConnecting(true);
+    setTgError('');
+    try {
+      const res  = await fetch('/api/telegram/connect', { method: 'POST' });
+      const data = await res.json();
+      if (data.deepLink) {
+        setDeepLink(data.deepLink);
+      } else {
+        setTgError('Bot istifadəçi adı konfiqurasiya edilməyib (TELEGRAM_BOT_USERNAME)');
+      }
+    } catch {
+      setTgError('Xəta baş verdi. Yenidən cəhd edin.');
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    await fetch('/api/admin/telegram-settings', { method: 'DELETE' });
+    setStatus('disconnected');
+    setChatId(null);
+    setDeepLink(null);
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestOk(false);
+    try {
+      await fetch('/api/admin/telegram-test', { method: 'POST' });
+      setTestOk(true);
+      setTimeout(() => setTestOk(false), 3000);
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Telegram Bildirişləri</p>
+          <p className="text-xs text-slate-500 mt-0.5">Müştəri bildirişlərini Telegram-da alın</p>
+        </div>
+        <span className="text-2xl">📱</span>
+      </div>
+
+      {status === 'loading' && (
+        <p className="text-xs text-slate-400">Yüklənir...</p>
+      )}
+
+      {status === 'connected' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <span className="text-green-500 text-lg">✅</span>
+            <div>
+              <p className="text-sm font-semibold text-green-800">Telegram bağlıdır</p>
+              {chatId && <p className="text-xs text-green-600 mt-0.5">Chat ID: {chatId}</p>}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className="flex-1 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100 disabled:opacity-60 transition-colors"
+            >
+              {testOk ? '✓ Göndərildi!' : testing ? 'Göndərilir...' : '🔔 Test Bildirişi Göndər'}
+            </button>
+            <button
+              onClick={handleDisconnect}
+              className="py-2.5 px-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors"
+            >
+              Ayır
+            </button>
+          </div>
+        </div>
+      )}
+
+      {status === 'disconnected' && !deepLink && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            Bağladıqdan sonra təklif baxışları, müştəri cavabları və xatırlatmalar Telegram-a göndəriləcək.
+          </p>
+          <button
+            onClick={handleConnect}
+            disabled={connecting}
+            className="w-full py-3 rounded-xl font-bold text-sm text-white transition-colors disabled:opacity-60"
+            style={{ background: connecting ? '#94a3b8' : '#229ED9' }}
+          >
+            {connecting ? 'Hazırlanır...' : '📱 Telegram-a Bağla'}
+          </button>
+        </div>
+      )}
+
+      {status === 'disconnected' && deepLink && (
+        <div className="space-y-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-xs font-semibold text-blue-800">Telegram-da botu açın və &quot;Start&quot; düyməsinə basın:</p>
+            <a
+              href={deepLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-2.5 text-center rounded-lg text-white text-sm font-bold transition-colors"
+              style={{ background: '#229ED9' }}
+            >
+              Telegram-da Aç
+            </a>
+            <p className="text-xs text-blue-500">Link 15 dəqiqəyə qədər keçərlidir</p>
+          </div>
+          <button
+            onClick={() => { setDeepLink(null); refreshStatus(); }}
+            className="w-full py-2 rounded-xl border border-slate-200 text-slate-500 text-xs font-semibold hover:bg-slate-50 transition-colors"
+          >
+            Statusu yoxla
+          </button>
+        </div>
+      )}
+
+      {tgError && (
+        <p className="text-xs text-red-600">{tgError}</p>
+      )}
+    </div>
+  );
+}
+
+function NotificationSettingsSection() {
+  const supabase = createSupabaseBrowserClient();
+
+  interface NotifSettings {
+    quietStart: number;
+    quietEnd: number;
+    highEnabled: boolean;
+    normalEnabled: boolean;
+    lowEnabled: boolean;
+  }
+
+  const [settings, setSettings] = useState<NotifSettings>({
+    quietStart: 22, quietEnd: 9,
+    highEnabled: true, normalEnabled: true, lowEnabled: true,
+  });
+  const [saved,  setSaved]  = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('agency_profiles')
+        .select('notification_settings')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (data?.notification_settings) {
+        setSettings(s => ({ ...s, ...data.notification_settings }));
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('agency_profiles')
+        .update({ notification_settings: settings })
+        .eq('id', user.id);
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    setSaving(false);
+  }
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Bildiriş Parametrləri</p>
+
+      {/* Quiet hours */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-2">Sakit saat aralığı (Bakı vaxtı)</p>
+        <p className="text-xs text-slate-400 mb-3">Bu aralıqda yalnız yüksək prioritetli bildirişlər göndərilir</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Başlanğıc</label>
+            <select
+              value={settings.quietStart}
+              onChange={e => setSettings(s => ({ ...s, quietStart: parseInt(e.target.value) }))}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {hours.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Bitmə</label>
+            <select
+              value={settings.quietEnd}
+              onChange={e => setSettings(s => ({ ...s, quietEnd: parseInt(e.target.value) }))}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {hours.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Priority toggles */}
+      <div className="space-y-3">
+        <p className="text-sm font-semibold text-slate-700">Bildiriş növləri</p>
+        {([
+          { key: 'highEnabled',   label: 'Yüksək prioritet',  desc: 'Birinci baxış, cavab, WhatsApp — həmişə göndərilir' },
+          { key: 'normalEnabled', label: 'Normal prioritet',   desc: 'Təkrar baxışlar — saatda 1 dəfə göndərilir' },
+          { key: 'lowEnabled',    label: 'Aşağı prioritet',    desc: 'Xatırlatmalar — sakit saatda göndərilmir' },
+        ] as { key: keyof NotifSettings; label: string; desc: string }[]).map(({ key, label, desc }) => (
+          <div key={key} className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-slate-700 font-medium">{label}</p>
+              <p className="text-xs text-slate-400">{desc}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettings(s => ({ ...s, [key]: !s[key] }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                settings[key] ? 'bg-teal-500' : 'bg-slate-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                settings[key] ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={save}
+        disabled={saving}
+        className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white text-sm font-bold transition-colors"
+      >
+        {saved ? '✓ Saxlandı!' : saving ? 'Saxlanır...' : 'Parametrləri saxla'}
+      </button>
     </div>
   );
 }
