@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (q) {
-      query = query.or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+      // Sanitize: strip PostgREST filter special chars to prevent injection
+      const safeQ = q.replace(/[%,.()\[\]:]/g, '');
+      if (safeQ) {
+        query = query.or(`full_name.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`);
+      }
     }
     if (tag) {
       query = query.contains('tags', [tag]);

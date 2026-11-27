@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import {
   PLANS,
@@ -108,42 +108,62 @@ export async function POST(request: NextRequest) {
       }
       const expiryDays = Math.min(30, Math.max(1, (body as { expiryDays?: number }).expiryDays ?? 3));
       patch.expires_at = new Date(Date.now() + expiryDays * 86_400_000).toISOString();
-      await supabase.from('offers').update(patch).eq('id', offerId).eq('agency_id', user.id);
 
-      // Log offer_sent activity for the client
-      if (patch.client_id) {
-        await supabase.from('client_activities').insert({
-          client_id: patch.client_id,
-          type:      'offer_sent',
-          payload:   { offer_id: offerId, destination: body.destination },
-        }).then(() => {/* fire-and-forget */});
+      const { error: patchErr } = await supabase
+        .from('offers')
+        .update(patch)
+        .eq('id', offerId)
+        .eq('agency_id', user.id);
+      if (patchErr) {
+        console.error('[POST /api/offers] patch update error:', patchErr.message);
       }
 
-      // ── Hotel learning loop ────────────────────────────────────────────────
+      // ── Non-critical work: activity log + hotel tracking + counter ─────────
+      // Runs after the response is sent — doesn't block the client
       type HotelPayload = {
         catalogHotelId?: string; name?: string; city?: string; country?: string;
         stars?: number; mealType?: string; imageUrl?: string; sharePhoto?: boolean;
       };
-      for (const h of (body.hotels as HotelPayload[])) {
-        await supabase.rpc('track_hotel_usage', {
-          p_catalog_id: h.catalogHotelId ?? null,
-          p_name:       h.name           ?? null,
-          p_city:       h.city           ?? null,
-          p_country:    h.country        ?? null,
-          p_stars:      h.stars          ?? 5,
-          p_meal:       h.mealType       ?? 'AI',
-          p_agency_id:  user.id,
-          p_photo_url:  (h.sharePhoto && h.imageUrl) ? h.imageUrl : null,
-        }).then(() => {/* fire-and-forget */});
-      }
+      const hotelsSnapshot = body.hotels as HotelPayload[];
+      const clientIdSnapshot = patch.client_id as string | undefined;
+      const monthlyLimited = plan.limits.monthlyOfferLimit !== null;
+      const monthlyUsedNow = p.monthly_offers_used ?? 0;
 
-      // Increment monthly counter (only relevant for starter, harmless for others)
-      if (plan.limits.monthlyOfferLimit !== null) {
-        await supabase
-          .from('agency_profiles')
-          .update({ monthly_offers_used: (p.monthly_offers_used ?? 0) + 1 })
-          .eq('id', user.id);
-      }
+      after(async () => {
+        // Log offer_sent activity for the client
+        if (clientIdSnapshot) {
+          const { error: actErr } = await supabase.from('client_activities').insert({
+            client_id: clientIdSnapshot,
+            type:      'offer_sent',
+            payload:   { offer_id: offerId, destination: body.destination },
+          });
+          if (actErr) console.error('[POST /api/offers] activity insert error:', actErr.message);
+        }
+
+        // Hotel learning loop — run in parallel
+        await Promise.all(hotelsSnapshot.map(h =>
+          supabase.rpc('track_hotel_usage', {
+            p_catalog_id: h.catalogHotelId ?? null,
+            p_name:       h.name           ?? null,
+            p_city:       h.city           ?? null,
+            p_country:    h.country        ?? null,
+            p_stars:      h.stars          ?? 5,
+            p_meal:       h.mealType       ?? 'AI',
+            p_agency_id:  user.id,
+            p_photo_url:  (h.sharePhoto && h.imageUrl) ? h.imageUrl : null,
+          }).then(({ error: e }) => {
+            if (e) console.error('[POST /api/offers] track_hotel_usage error:', e.message);
+          })
+        ));
+
+        // Increment monthly counter
+        if (monthlyLimited) {
+          await supabase
+            .from('agency_profiles')
+            .update({ monthly_offers_used: monthlyUsedNow + 1 })
+            .eq('id', user.id);
+        }
+      });
     }
 
     return NextResponse.json({ id: offerId }, { status: 201 });
