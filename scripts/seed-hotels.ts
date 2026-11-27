@@ -1,16 +1,16 @@
 /**
  * Seed hotel catalog into Supabase.
- * Run: npx ts-node --project tsconfig.json scripts/seed-hotels.ts
+ * Run: npm run seed:hotels
  * Requires: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY in .env.local
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { resolve } from 'path';
 import { config } from 'dotenv';
 
-// Load .env.local
-config({ path: join(__dirname, '../.env.local') });
+// Load .env.local — resolve relative to cwd (project root)
+config({ path: resolve(process.cwd(), '.env.local') });
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_KEY;
@@ -31,7 +31,7 @@ interface SeedHotel {
 }
 
 async function main() {
-  const hotelsPath = join(__dirname, '../lib/seed/hotels.json');
+  const hotelsPath = resolve(process.cwd(), 'lib/seed/hotels.json');
   const hotels: SeedHotel[] = JSON.parse(readFileSync(hotelsPath, 'utf-8'));
 
   const rows = hotels.map(h => ({
