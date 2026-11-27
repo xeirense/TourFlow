@@ -63,4 +63,4 @@ supabase-schema.sql
 
 ## Business model
 
-Monthly subscription per agency, priced in AZN: Start 39 AZN, Pro 89 AZN, Agency 199 AZN. Every plan comes with a 14-day free trial.
+Monthly subscription per agency, priced in AZN: Starter 89 ₼, Growth 179 ₼, Pro Agency 299 ₼, Enterprise (custom). Every plan comes with a 14-day free trial.

@@ -34,7 +34,7 @@ export default async function LandingPage() {
             </div>
             <span className="font-black text-lg tracking-tight text-gray-900">TourFlow</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <a
               href="#qiymetler"
               className="hidden sm:block text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
@@ -43,7 +43,7 @@ export default async function LandingPage() {
             </a>
             <Link
               href="/login"
-              className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
+              className="hidden min-[360px]:block text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
             >
               Daxil ol
             </Link>
@@ -74,7 +74,7 @@ export default async function LandingPage() {
           <p className="text-gray-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             TourFlow ilə hər müştəriyə{' '}
             <span className="text-white font-semibold">30 saniyədə</span>{' '}
-            fərdi, brendlənmiş tur presentasiyası göndər.
+            fərdi, brendlənmiş tur prezentasiyası göndər.
             Müştərin linki açan kimi sən bilirsən. Rəqibin hələ Excel-dədir.
           </p>
 
