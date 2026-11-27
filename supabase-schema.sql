@@ -409,3 +409,155 @@ GRANT EXECUTE ON FUNCTION handle_new_user()         TO service_role;
 
 ALTER TABLE public.agency_profiles
   ADD COLUMN IF NOT EXISTS manager_name TEXT DEFAULT NULL;
+
+-- ============================================================
+--  V6 MIGRATION – CRM: clients, activities, reminders
+--  Run this in Supabase SQL Editor (all safe with IF NOT EXISTS)
+-- ============================================================
+
+-- ── 1. clients ────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.clients (
+  id                     TEXT        PRIMARY KEY DEFAULT encode(gen_random_bytes(6), 'hex'),
+  agency_owner_id        UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  assigned_manager_id    UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  full_name              TEXT        NOT NULL,
+  phone                  TEXT        NOT NULL DEFAULT '',
+  email                  TEXT,
+  birthday               DATE,
+  notes                  TEXT,
+  tags                   TEXT[]      NOT NULL DEFAULT '{}',
+  budget_min             NUMERIC,
+  budget_max             NUMERIC,
+  currency               TEXT        NOT NULL DEFAULT 'AZN',
+  travelers              JSONB       NOT NULL DEFAULT '{"adults":2,"children":0,"child_ages":[]}'::jsonb,
+  preferred_destinations TEXT[]      NOT NULL DEFAULT '{}',
+  preferred_stars        INTEGER,
+  preferred_meal         TEXT,
+  source                 TEXT        NOT NULL DEFAULT 'whatsapp'
+                           CHECK (source IN ('whatsapp','instagram','referral','walk-in','other')),
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+
+-- Agency owner can do everything with their clients
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='clients' AND policyname='Owner manages agency clients') THEN
+    CREATE POLICY "Owner manages agency clients" ON public.clients
+      FOR ALL USING (agency_owner_id = auth.uid()) WITH CHECK (agency_owner_id = auth.uid());
+  END IF;
+END $$;
+
+-- Assigned manager can SELECT their clients
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='clients' AND policyname='Manager reads assigned clients') THEN
+    CREATE POLICY "Manager reads assigned clients" ON public.clients
+      FOR SELECT USING (assigned_manager_id = auth.uid());
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clients TO authenticated, service_role;
+
+-- ── 2. offers.client_id FK ────────────────────────────────────────────────────
+ALTER TABLE public.offers
+  ADD COLUMN IF NOT EXISTS client_id TEXT REFERENCES public.clients(id) ON DELETE SET NULL;
+
+-- ── 3. client_activities ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.client_activities (
+  id         TEXT        PRIMARY KEY DEFAULT encode(gen_random_bytes(6), 'hex'),
+  client_id  TEXT        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  type       TEXT        NOT NULL
+               CHECK (type IN ('offer_sent','viewed','responded','selected','note','call','paid','trip_done')),
+  payload    JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.client_activities ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='client_activities' AND policyname='Agency manages client activities') THEN
+    CREATE POLICY "Agency manages client activities" ON public.client_activities
+      FOR ALL USING (
+        EXISTS (
+          SELECT 1 FROM public.clients c
+          WHERE c.id = client_id
+            AND (c.agency_owner_id = auth.uid() OR c.assigned_manager_id = auth.uid())
+        )
+      );
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_activities TO authenticated, service_role;
+
+-- ── 4. reminders ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reminders (
+  id         TEXT        PRIMARY KEY DEFAULT encode(gen_random_bytes(6), 'hex'),
+  client_id  TEXT        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  manager_id UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  due_at     TIMESTAMPTZ NOT NULL,
+  kind       TEXT        NOT NULL DEFAULT 'manual',
+  text       TEXT        NOT NULL,
+  done_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='reminders' AND policyname='Agency manages reminders') THEN
+    CREATE POLICY "Agency manages reminders" ON public.reminders
+      FOR ALL USING (
+        manager_id = auth.uid() OR
+        EXISTS (
+          SELECT 1 FROM public.clients c
+          WHERE c.id = client_id AND c.agency_owner_id = auth.uid()
+        )
+      );
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reminders TO authenticated, service_role;
+
+-- ── 5. Indexes ────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS clients_agency_owner_idx    ON public.clients (agency_owner_id);
+CREATE INDEX IF NOT EXISTS clients_manager_idx         ON public.clients (assigned_manager_id);
+CREATE INDEX IF NOT EXISTS activities_client_idx       ON public.client_activities (client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS reminders_manager_due_idx   ON public.reminders (manager_id, due_at) WHERE done_at IS NULL;
+CREATE INDEX IF NOT EXISTS reminders_client_idx        ON public.reminders (client_id);
+CREATE INDEX IF NOT EXISTS offers_client_id_idx        ON public.offers (client_id);
+
+-- ── 6. Backfill helper (call manually: SELECT backfill_clients_from_offers();) ─
+CREATE OR REPLACE FUNCTION backfill_clients_from_offers()
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_row   RECORD;
+  v_cid   TEXT;
+BEGIN
+  FOR v_row IN
+    SELECT DISTINCT ON (agency_id, COALESCE(client_phone, client_name))
+      id, agency_id, client_name, client_phone
+    FROM public.offers
+    WHERE agency_id IS NOT NULL
+      AND client_id IS NULL
+    ORDER BY agency_id, COALESCE(client_phone, client_name), created_at
+  LOOP
+    -- Insert client (ignore conflicts on duplicate name+agency)
+    INSERT INTO public.clients (agency_owner_id, full_name, phone)
+    VALUES (v_row.agency_id, v_row.client_name, COALESCE(v_row.client_phone, ''))
+    RETURNING id INTO v_cid;
+
+    -- Link all matching offers for this agency+phone or name
+    UPDATE public.offers
+    SET client_id = v_cid
+    WHERE agency_id = v_row.agency_id
+      AND COALESCE(client_phone, client_name) = COALESCE(v_row.client_phone, v_row.client_name)
+      AND client_id IS NULL;
+
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION backfill_clients_from_offers() TO service_role;

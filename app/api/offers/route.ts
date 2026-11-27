@@ -103,9 +103,21 @@ export async function POST(request: NextRequest) {
       if ((body as { clientPhone?: string }).clientPhone?.trim()) {
         patch.client_phone = (body as { clientPhone?: string }).clientPhone!.trim();
       }
+      if ((body as { clientId?: string }).clientId?.trim()) {
+        patch.client_id = (body as { clientId?: string }).clientId!.trim();
+      }
       const expiryDays = Math.min(30, Math.max(1, (body as { expiryDays?: number }).expiryDays ?? 3));
       patch.expires_at = new Date(Date.now() + expiryDays * 86_400_000).toISOString();
       await supabase.from('offers').update(patch).eq('id', offerId).eq('agency_id', user.id);
+
+      // Log offer_sent activity for the client
+      if (patch.client_id) {
+        await supabase.from('client_activities').insert({
+          client_id: patch.client_id,
+          type:      'offer_sent',
+          payload:   { offer_id: offerId, destination: body.destination },
+        }).then(() => {/* fire-and-forget */});
+      }
 
       // Increment monthly counter (only relevant for starter, harmless for others)
       if (plan.limits.monthlyOfferLimit !== null) {

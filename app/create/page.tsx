@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { Currency, MealType, Stars, OfferTemplate } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
+import ClientCombobox, { type ClientHit } from '@/app/dashboard/clients/ClientCombobox';
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
@@ -159,8 +160,9 @@ function CreatePageContent() {
   }
 
   // ── Trip ─────────────────────────────────────────────────────────────────────
-  const [clientName,  setClientName]  = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [clientName,     setClientName]     = useState('');
+  const [clientPhone,    setClientPhone]    = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [destination, setDestination] = useState('');
   const [startDate,   setStartDate]   = useState('');
   const [endDate,     setEndDate]     = useState('');
@@ -276,6 +278,25 @@ function CreatePageContent() {
           : '';
 
       try {
+        // Create a new client record if no existing client was selected
+        let resolvedClientId = selectedClientId;
+        if (!resolvedClientId && clientName.trim()) {
+          const clientRes = await fetch('/api/clients', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              fullName:  clientName.trim(),
+              phone:     clientPhone.trim() || '',
+              travelers: { adults, children, child_ages: [] },
+              source:    'whatsapp',
+            }),
+          });
+          if (clientRes.ok) {
+            const newClient = await clientRes.json();
+            resolvedClientId = newClient.id ?? null;
+          }
+        }
+
         const res = await fetch('/api/offers', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -304,6 +325,7 @@ function CreatePageContent() {
             parentOfferId: isAlt && duplicateId ? duplicateId : undefined,
             clientPhone:   clientPhone.trim() || undefined,
             expiryDays:    parseInt(expiryDays) || 3,
+            clientId:      resolvedClientId ?? undefined,
           }),
         });
 
@@ -682,13 +704,19 @@ function CreatePageContent() {
         <Section title="Müştəri və Tur məlumatları" emoji="🧳">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Müştərinin adı *">
-              <input
-                type="text"
-                required
+              <ClientCombobox
                 value={clientName}
-                onChange={e => setClientName(e.target.value)}
-                placeholder="Aysel xanım"
-                className={inputCls}
+                selectedId={selectedClientId}
+                onChange={name => { setClientName(name); setSelectedClientId(null); }}
+                onSelect={(c: ClientHit) => {
+                  setClientName(c.full_name);
+                  setClientPhone(c.phone);
+                  setAdults(c.travelers.adults ?? 2);
+                  setChildren(c.travelers.children ?? 0);
+                  setSelectedClientId(c.id);
+                }}
+                onClear={() => { setSelectedClientId(null); }}
+                inputClassName={inputCls}
               />
             </Field>
             <Field label="İstiqamət / Ölkə *">

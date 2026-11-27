@@ -95,3 +95,72 @@ export interface AgencyMember {
 export type OfferInput = Omit<Offer, 'id' | 'createdAt' | 'viewsCount' | 'selectedHotel' | 'status' | 'expiresAt' | 'customerResponse' | 'lastViewedAt' | 'createdBy' | 'customerFavorites' | 'customerNote'> & {
   parentOfferId?: string;
 };
+
+// ─── CRM types ────────────────────────────────────────────────────────────────
+
+export type ClientSource = 'whatsapp' | 'instagram' | 'referral' | 'walk-in' | 'other';
+export type ActivityType = 'offer_sent' | 'viewed' | 'responded' | 'selected' | 'note' | 'call' | 'paid' | 'trip_done';
+
+export const SOURCE_LABELS: Record<ClientSource, string> = {
+  whatsapp:  'WhatsApp',
+  instagram: 'Instagram',
+  referral:  'Tövsiyə',
+  'walk-in': 'Şəxsən',
+  other:     'Digər',
+};
+
+export const ACTIVITY_LABELS: Record<ActivityType, string> = {
+  offer_sent: 'Təklif göndərildi',
+  viewed:     'Baxdı',
+  responded:  'Cavab verdi',
+  selected:   'Otel seçdi',
+  note:       'Qeyd',
+  call:       'Zəng',
+  paid:       'Ödədi',
+  trip_done:  'Səfər tamamlandı',
+};
+
+export interface TFClient {
+  id: string;
+  agencyOwnerId: string;
+  assignedManagerId: string | null;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  birthday: string | null;        // ISO date string "YYYY-MM-DD"
+  notes: string | null;
+  tags: string[];
+  budgetMin: number | null;
+  budgetMax: number | null;
+  currency: Currency;
+  travelers: { adults: number; children: number; child_ages: number[] };
+  preferredDestinations: string[];
+  preferredStars: number | null;
+  preferredMeal: MealType | null;
+  source: ClientSource;
+  createdAt: string;
+  // Joined fields (optional)
+  lastActivityAt?: string | null;
+  offerCount?: number;
+}
+
+export interface ClientActivity {
+  id: string;
+  clientId: string;
+  type: ActivityType;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface Reminder {
+  id: string;
+  clientId: string;
+  managerId: string;
+  dueAt: string;
+  kind: string;
+  text: string;
+  doneAt: string | null;
+  createdAt: string;
+  // Joined
+  clientName?: string;
+}

@@ -18,6 +18,8 @@ export interface PlanFeatures {
   customerFavorites: boolean;  // müştəri favorit + qeyd
   adminPanel:        boolean;  // rəhbər panel (menecer müqayisəsi)
   customDomain:      boolean;  // özəl domen dəstəyi
+  clientReminders:   boolean;  // avtomatik xatırlatmalar (cron)
+  clientExport:      boolean;  // müştəri CSV ixracı
 }
 
 export interface PlanInfo {
@@ -50,6 +52,8 @@ export const PLANS: Record<PlanTier, PlanInfo> = {
       customerFavorites: false,
       adminPanel:        false,
       customDomain:      false,
+      clientReminders:   false,
+      clientExport:      false,
     },
     highlights: [
       '1–2 menecer hesabı',
@@ -78,6 +82,8 @@ export const PLANS: Record<PlanTier, PlanInfo> = {
       customerFavorites: true,
       adminPanel:        false,
       customDomain:      false,
+      clientReminders:   true,
+      clientExport:      true,
     },
     highlights: [
       '5 menecerə qədər komanda hesabı',
@@ -107,6 +113,8 @@ export const PLANS: Record<PlanTier, PlanInfo> = {
       customerFavorites: true,
       adminPanel:        true,
       customDomain:      true,
+      clientReminders:   true,
+      clientExport:      true,
     },
     highlights: [
       '12 menecerə qədər komanda hesabı (əlavə menecer: +20 ₼/ay)',
@@ -135,6 +143,8 @@ export const PLANS: Record<PlanTier, PlanInfo> = {
       customerFavorites: true,
       adminPanel:        true,
       customDomain:      true,
+      clientReminders:   true,
+      clientExport:      true,
     },
     highlights: [
       'Limitsiz menecer və filial strukturu',

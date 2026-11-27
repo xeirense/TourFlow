@@ -11,6 +11,7 @@ interface TeamMember {
   role: 'owner' | 'agent';
   status: 'active' | 'invited';
   created_at: string;
+  member_user_id?: string | null;
 }
 
 interface PlanStatus {
@@ -70,11 +71,21 @@ export default function TeamPage() {
     setInviting(false);
   }
 
-  async function handleDelete(id: string, email: string) {
+  async function handleDelete(id: string, email: string, memberUserId: string | null) {
     if (!confirm(`"${email}" üzvünü komandadan çıxarmaq istəyirsiniz?`)) return;
     setDeletingId(id);
     const res = await fetch(`/api/team/${id}`, { method: 'DELETE' });
-    if (res.ok) setMembers(prev => prev.filter(m => m.id !== id));
+    if (res.ok) {
+      setMembers(prev => prev.filter(m => m.id !== id));
+      // Reassign their clients to owner
+      if (memberUserId) {
+        await fetch('/api/clients/reassign', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fromManagerId: memberUserId, toManagerId: null }),
+        }).catch(() => {/* non-critical */});
+      }
+    }
     setDeletingId(null);
   }
 
@@ -237,7 +248,7 @@ export default function TeamPage() {
                     </span>
 
                     <button
-                      onClick={() => handleDelete(m.id, m.invited_email)}
+                      onClick={() => handleDelete(m.id, m.invited_email, m.member_user_id ?? null)}
                       disabled={deletingId === m.id}
                       className="ml-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors disabled:opacity-40"
                       title="Komandadan çıxar"

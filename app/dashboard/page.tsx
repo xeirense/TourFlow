@@ -15,6 +15,7 @@ import {
   type PlanTier,
 } from '@/lib/planConfig';
 import type { ReactNode } from 'react';
+import TodayReminders from './TodayReminders';
 
 // ─── Row type from offers table ───────────────────────────────────────────────
 interface OfferRow {
@@ -132,6 +133,16 @@ export default async function DashboardPage() {
   const monthlyUsed   = planData.monthly_offers_used ?? 0;
   const monthlyLimit  = planInfo.limits.monthlyOfferLimit;
 
+  // Today's reminders (due, not done) for this manager
+  const { data: todayRemindersData } = await supabase
+    .from('reminders')
+    .select('id, text, kind, due_at, client_id, clients(full_name, phone)')
+    .eq('manager_id', user.id)
+    .lte('due_at', new Date().toISOString())
+    .is('done_at', null)
+    .order('due_at', { ascending: true })
+    .limit(10);
+
   const reqHeaders = await headers();
   const host    = reqHeaders.get('host') ?? '';
   const proto   = host.startsWith('localhost') ? 'http' : 'https';
@@ -158,6 +169,12 @@ export default async function DashboardPage() {
                 className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
               >
                 📊 Analitika
+              </Link>
+              <Link
+                href="/dashboard/clients"
+                className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+              >
+                👤 Müştərilər
               </Link>
               <Link
                 href="/dashboard/team"
@@ -194,6 +211,12 @@ export default async function DashboardPage() {
               📊 Analitika
             </Link>
             <Link
+              href="/dashboard/clients"
+              className="flex-shrink-0 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
+            >
+              👤 Müştərilər
+            </Link>
+            <Link
               href="/dashboard/team"
               className="flex-shrink-0 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 whitespace-nowrap"
             >
@@ -215,6 +238,9 @@ export default async function DashboardPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+        {/* ── Today's reminders ────────────────────────────────────────── */}
+        <TodayReminders reminders={(todayRemindersData ?? []) as unknown as Parameters<typeof TodayReminders>[0]['reminders']} />
 
         {/* ── Stats ────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">
