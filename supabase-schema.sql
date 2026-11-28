@@ -880,3 +880,21 @@ CREATE POLICY "Agency reads own and team offers"
 
 -- Anonymous visitors get no direct table access at all
 REVOKE SELECT ON public.offers FROM anon;
+
+-- ── V15: drop any extra SELECT policies on offers ─────────────────────────────
+DO $$
+DECLARE
+  p RECORD;
+BEGIN
+  FOR p IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'offers'
+      AND cmd        = 'SELECT'
+      AND policyname <> 'Agency reads own and team offers'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.offers', p.policyname);
+    RAISE NOTICE 'Dropped policy: %', p.policyname;
+  END LOOP;
+END $$;
