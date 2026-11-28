@@ -13,15 +13,17 @@ function adminDb() {
 // POST /api/telegram/webhook — receives Telegram bot updates (set once via setWebhook)
 export async function POST(request: NextRequest) {
   // Verify Telegram-sent secret token
+  // The secret is required: without it anyone could post fake bot updates.
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  if (webhookSecret) {
-    const incoming = request.headers.get('x-telegram-bot-api-secret-token');
-    if (incoming !== webhookSecret) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  if (!webhookSecret) {
+    console.error('[telegram/webhook] TELEGRAM_WEBHOOK_SECRET is not set — rejecting update');
+    return NextResponse.json({ error: 'Not configured' }, { status: 503 });
+  }
+  if (request.headers.get('x-telegram-bot-api-secret-token') !== webhookSecret) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const update = await request.json();
+  const update = await request.json().catch(() => null);
   const message = update?.message;
   if (!message) return NextResponse.json({ ok: true });
 
