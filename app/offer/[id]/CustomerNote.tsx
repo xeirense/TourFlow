@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from '@/app/components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 
 /**
@@ -67,20 +68,17 @@ export default function CustomerNote({
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="bg-gray-50 px-5 py-3 border-b border-gray-100">
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-          Sizin seçimləriniz
-        </p>
+    <div className="card overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-slate-100">
+        <p className="text-sm font-semibold text-ink">Seçimləriniz və qeydiniz</p>
+        <p className="text-xs text-slate-500 mt-0.5">Bəyəndiyiniz otelləri işarələyin, sualınızı yazın</p>
       </div>
 
       <div className="px-5 py-4 space-y-4">
         {/* ── Favourites (only shown if multiple hotels) ── */}
         {hotelNames.length > 1 && (
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-2">
-              Bəyəndiyiniz otellər:
-            </p>
+            <p className="label">Bəyəndiyiniz otellər</p>
             <div className="flex flex-wrap gap-2">
               {hotelNames.map(name => {
                 const isFav = favorites.includes(name);
@@ -88,13 +86,14 @@ export default function CustomerNote({
                   <button
                     key={name}
                     onClick={() => toggleFav(name)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-[.97] ${
+                    aria-pressed={isFav}
+                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
                       isFav
-                        ? 'bg-teal-500 text-white border-teal-500 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
+                        ? 'bg-ink text-white border-ink'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <span>{isFav ? '♥' : '♡'}</span>
+                    <Icon name="heart" className="w-3.5 h-3.5" fill={isFav ? 'currentColor' : 'none'} />
                     <span className="max-w-[120px] truncate">{name}</span>
                   </button>
                 );
@@ -105,25 +104,23 @@ export default function CustomerNote({
 
         {/* ── Note textarea ── */}
         <div>
-          <p className="text-sm font-semibold text-gray-700 mb-1.5">
-            Menecerə qeyd yazın:
-          </p>
+          <p className="label">Menecerə qeyd</p>
           <textarea
             value={note}
             onChange={handleNoteChange}
             placeholder="Məsələn: Uşaqlı ailəyik, hovuz yaxın olsun. İki variant arasında qalmışam..."
             rows={3}
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 resize-none"
           />
           <button
             onClick={handleSave}
-            className={`mt-2 px-5 py-2 rounded-xl text-xs font-bold transition-all active:scale-[.97] ${
-              saved
-                ? 'bg-teal-100 text-teal-700 border border-teal-200'
-                : 'bg-teal-500 hover:bg-teal-600 text-white'
-            }`}
+            className={`mt-2 btn btn-md ${saved ? 'btn-secondary' : 'btn-dark'}`}
           >
-            {saved ? '✓ Qeyd menecerə göndərildi' : 'Qeydi göndər →'}
+            {saved ? (
+              <><Icon name="check" className="w-4 h-4" /> Menecerə göndərildi</>
+            ) : (
+              <><Icon name="send" className="w-4 h-4" /> Qeydi göndər</>
+            )}
           </button>
         </div>
       </div>

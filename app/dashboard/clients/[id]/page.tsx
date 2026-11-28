@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ACTIVITY_LABELS, SOURCE_LABELS, type TFClient, type ClientActivity, type Reminder } from '@/lib/types';
+import Icon from '@/app/components/Icon';
+import { PageTitle } from '@/app/components/AppHeader';
 
 interface OfferRow {
   id: string;
@@ -191,15 +193,18 @@ export default function ClientProfilePage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <span className="inline-block w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+    <div className="py-24 flex items-center justify-center">
+      <span className="inline-block w-6 h-6 border-2 border-slate-300 border-t-ink rounded-full animate-spin" />
     </div>
   );
 
   if (error || !client) return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-4">
-      <p className="text-slate-500">{error || 'Tapılmadı'}</p>
-      <Link href="/dashboard/clients" className="text-teal-600 text-sm font-semibold">← Geri qayıt</Link>
+    <div className="py-24 flex flex-col items-center justify-center gap-3">
+      <p className="text-slate-500 text-sm">{error || 'Müştəri tapılmadı'}</p>
+      <Link href="/dashboard/clients" className="btn btn-sm btn-secondary">
+        <Icon name="back" className="w-3.5 h-3.5" />
+        Müştərilər
+      </Link>
     </div>
   );
 
@@ -209,7 +214,7 @@ export default function ClientProfilePage() {
   const travelers     = client.travelers;
   const travelersText = `${travelers.adults} böyük${travelers.children > 0 ? `, ${travelers.children} uşaq` : ''}`;
 
-  const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 transition';
+  const inputCls = 'input';
 
   // Build timeline: merge offers + activities, sort by date
   type TimelineItem =
@@ -221,267 +226,242 @@ export default function ClientProfilePage() {
     ...activities.map(a => ({ kind: 'activity' as const, data: a, date: a.createdAt })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const newOfferHref = `/create?clientName=${encodeURIComponent(client.fullName)}&clientPhone=${encodeURIComponent(client.phone)}&adults=${travelers.adults}&children=${travelers.children}`;
+
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Header */}
-      <header className="bg-[#0A0F1E] border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/dashboard/clients" className="text-slate-400 hover:text-white transition-colors text-xl">←</Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-base truncate">{client.fullName}</h1>
-            <p className="text-slate-500 text-xs">{SOURCE_LABELS[client.source]} · {travelersText}</p>
-          </div>
-          <Link
-            href={`/create?clientName=${encodeURIComponent(client.fullName)}&clientPhone=${encodeURIComponent(client.phone)}&adults=${travelers.adults}&children=${travelers.children}`}
-            className="bg-teal-500 hover:bg-teal-400 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
-          >
-            + Yeni Təklif
-          </Link>
-        </div>
-      </header>
+    <div>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <PageTitle
+          title={client.fullName}
+          subtitle={`${SOURCE_LABELS[client.source]} · ${travelersText}`}
+          back={{ href: '/dashboard/clients', label: 'Müştərilər' }}
+          actions={
+            <>
+              <button onClick={() => setShowReminder(true)} className="btn btn-sm btn-secondary">
+                <Icon name="bell" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Xatırlatma</span>
+              </button>
+              <button onClick={() => setShowNote(true)} className="btn btn-sm btn-secondary">
+                <Icon name="note" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Qeyd</span>
+              </button>
+              <Link href={newOfferHref} className="btn btn-sm btn-primary">
+                <Icon name="plus" className="w-3.5 h-3.5" strokeWidth={2} />
+                Yeni təklif
+              </Link>
+            </>
+          }
+        />
 
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
+        <div className="grid lg:grid-cols-[340px_1fr] gap-6 items-start">
 
-        {/* Due reminders banner */}
-        {dueReminders.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-            <p className="text-xs font-black text-amber-700 uppercase tracking-wide mb-2">🔔 Gecikmiş xatırlatmalar</p>
-            <ul className="space-y-2">
-              {dueReminders.map(r => (
-                <li key={r.id} className="flex items-center gap-3">
-                  <p className="flex-1 text-sm text-amber-900">{r.text}</p>
-                  <button
-                    onClick={() => markDone(r.id)}
-                    className="text-xs text-amber-700 border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors"
-                  >
-                    ✓ Tamamlandı
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Profile card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center font-black text-teal-700 text-lg">
-                {client.fullName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="font-bold text-slate-800">{client.fullName}</p>
-                {client.phone && (
-                  <a href={`https://wa.me/${client.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-teal-600 hover:underline">
-                    {client.phone}
-                  </a>
-                )}
-                {client.email && <p className="text-xs text-slate-400">{client.email}</p>}
-              </div>
-            </div>
-            <button
-              onClick={() => setShowPrefs(true)}
-              className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors"
-            >
-              ✏️ Redaktə
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
-            <div>
-              <p className="text-slate-400 mb-0.5">Mənbə</p>
-              <p className="font-semibold text-slate-700">{SOURCE_LABELS[client.source]}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 mb-0.5">Səyahətçilər</p>
-              <p className="font-semibold text-slate-700">{travelersText}</p>
-            </div>
-            {(client.budgetMin || client.budgetMax) && (
-              <div>
-                <p className="text-slate-400 mb-0.5">Büdcə</p>
-                <p className="font-semibold text-slate-700">
-                  {client.budgetMin ?? '—'} – {client.budgetMax ?? '—'} {client.currency}
-                </p>
-              </div>
-            )}
-            {client.preferredDestinations.length > 0 && (
-              <div>
-                <p className="text-slate-400 mb-0.5">İstiqamətlər</p>
-                <p className="font-semibold text-slate-700">{client.preferredDestinations.join(', ')}</p>
-              </div>
-            )}
-            {client.birthday && (
-              <div>
-                <p className="text-slate-400 mb-0.5">Doğum tarixi</p>
-                <p className="font-semibold text-slate-700">{client.birthday}</p>
-              </div>
-            )}
-          </div>
-
-          {client.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {client.tags.map(t => (
-                <span key={t} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full">#{t}</span>
-              ))}
-            </div>
-          )}
-
-          {client.notes && (
-            <p className="text-xs text-slate-500 italic mt-3 border-t border-slate-100 pt-3">{client.notes}</p>
-          )}
-
-          {/* Do-not-contact toggle */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-            <div>
-              <p className="text-xs font-semibold text-slate-700">Əlaqə etmə</p>
-              <p className="text-xs text-slate-400">Aktiv edildikdə avtomatik xatırlatmalar göndərilmir</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toggleDoNotContact(!doNotContact)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                doNotContact ? 'bg-red-500' : 'bg-slate-200'
-              }`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                doNotContact ? 'translate-x-6' : 'translate-x-1'
-              }`} />
-            </button>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowReminder(true)}
-            className="flex-1 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-colors"
-          >
-            🔔 Xatırlatma əlavə et
-          </button>
-          <button
-            onClick={() => setShowNote(true)}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition-colors"
-          >
-            📝 Qeyd yaz
-          </button>
-        </div>
-
-        {/* Upcoming reminders */}
-        {upcoming.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Gözləyən xatırlatmalar</p>
-            <ul className="space-y-2">
-              {upcoming.map(r => (
-                <li key={r.id} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-700">{r.text}</p>
-                    <p className="text-xs text-slate-400">{new Date(r.dueAt).toLocaleDateString('az-AZ')}</p>
+          {/* ── Left column: profile ─────────────────────────────────── */}
+          <div className="space-y-4">
+            <section className="card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-semibold flex-shrink-0">
+                    {client.fullName.charAt(0).toUpperCase()}
                   </div>
-                  <button
-                    onClick={() => markDone(r.id)}
-                    className="text-xs text-slate-400 hover:text-green-600 transition-colors"
-                  >
-                    ✓
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Timeline */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Tarixçə</p>
-          {timeline.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-4">Hələ heç bir aktivlik yoxdur</p>
-          ) : (
-            <ul className="space-y-3">
-              {timeline.map((item, i) => (
-                <li key={i} className="flex gap-3">
-                  <div className="w-6 flex-shrink-0 flex flex-col items-center">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                      item.kind === 'offer' ? 'bg-teal-400' : 'bg-slate-300'
-                    }`} />
-                    {i < timeline.length - 1 && <div className="w-px flex-1 bg-slate-100 mt-1" />}
-                  </div>
-                  <div className="flex-1 pb-3">
-                    {item.kind === 'offer' ? (
-                      <>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                            Təklif göndərildi
-                          </span>
-                          <span className="text-xs text-slate-400">{timeAgo(item.date)}</span>
-                        </div>
-                        <Link
-                          href={`/offer/${item.data.id}`}
-                          target="_blank"
-                          className="text-sm text-slate-700 font-medium hover:text-teal-600 transition-colors"
-                        >
-                          {item.data.destination}
-                        </Link>
-                        <p className="text-xs text-slate-400">
-                          {item.data.hotels?.map((h: { name: string }) => h.name).join(', ')}
-                        </p>
-                        {item.data.views_count > 0 && (
-                          <p className="text-xs text-slate-400">{item.data.views_count} baxış</p>
-                        )}
-                        {item.data.customer_response && (
-                          <span className={`inline-block text-xs font-semibold mt-1 px-2 py-0.5 rounded-full ${
-                            item.data.customer_response === 'interested' ? 'bg-green-50 text-green-700' :
-                            item.data.customer_response === 'price_high' ? 'bg-amber-50 text-amber-700' :
-                            'bg-slate-100 text-slate-500'
-                          }`}>
-                            {item.data.customer_response === 'interested' ? 'Maraqlandı' :
-                             item.data.customer_response === 'price_high' ? 'Qiymət yüksəkdir' : 'Maraqlanmadı'}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                            {ACTIVITY_LABELS[item.data.type]}
-                          </span>
-                          <span className="text-xs text-slate-400">{timeAgo(item.date)}</span>
-                        </div>
-                        {(item.data.payload as { text?: string })?.text && (
-                          <p className="text-sm text-slate-600 mt-0.5">
-                            {(item.data.payload as { text: string }).text}
-                          </p>
-                        )}
-                      </>
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink truncate">{client.fullName}</p>
+                    {client.phone && (
+                      <a href={`https://wa.me/${client.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-brand-700 hover:underline">
+                        {client.phone}
+                      </a>
                     )}
+                    {client.email && <p className="text-xs text-slate-500 truncate">{client.email}</p>}
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                </div>
+                <button onClick={() => setShowPrefs(true)} className="btn btn-sm btn-ghost px-2" title="Redaktə et" aria-label="Redaktə et">
+                  <Icon name="edit" className="w-4 h-4" />
+                </button>
+              </div>
 
-        {/* Done reminders (collapsed) */}
-        {done.length > 0 && (
-          <details className="bg-white rounded-2xl border border-slate-100 p-4">
-            <summary className="text-xs font-bold text-slate-400 cursor-pointer">
-              ✓ Tamamlanmış xatırlatmalar ({done.length})
-            </summary>
-            <ul className="mt-3 space-y-1.5">
-              {done.map(r => (
-                <li key={r.id} className="text-xs text-slate-400 line-through">{r.text}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-slate-100 text-xs">
+                <div>
+                  <dt className="text-slate-500">Mənbə</dt>
+                  <dd className="text-ink mt-0.5">{SOURCE_LABELS[client.source]}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Səyahətçilər</dt>
+                  <dd className="text-ink mt-0.5">{travelersText}</dd>
+                </div>
+                {(client.budgetMin || client.budgetMax) && (
+                  <div>
+                    <dt className="text-slate-500">Büdcə</dt>
+                    <dd className="text-ink mt-0.5">{client.budgetMin ?? '—'} – {client.budgetMax ?? '—'} {client.currency}</dd>
+                  </div>
+                )}
+                {client.preferredDestinations.length > 0 && (
+                  <div>
+                    <dt className="text-slate-500">İstiqamətlər</dt>
+                    <dd className="text-ink mt-0.5">{client.preferredDestinations.join(', ')}</dd>
+                  </div>
+                )}
+                {client.birthday && (
+                  <div>
+                    <dt className="text-slate-500">Doğum tarixi</dt>
+                    <dd className="text-ink mt-0.5">{client.birthday}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {client.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-4">
+                  {client.tags.map(t => <span key={t} className="pill pill-neutral">#{t}</span>)}
+                </div>
+              )}
+
+              {client.notes && (
+                <p className="text-xs text-slate-600 mt-4 pt-4 border-t border-slate-100 leading-relaxed">{client.notes}</p>
+              )}
+
+              {/* Do-not-contact toggle */}
+              <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
+                <div>
+                  <p className="text-xs font-medium text-ink">Xatırlatma göndərmə</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Bu müştəri üçün avtomatik xatırlatmalar dayanır</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={doNotContact}
+                  onClick={() => toggleDoNotContact(!doNotContact)}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                    doNotContact ? 'bg-ink' : 'bg-slate-200'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    doNotContact ? 'translate-x-[18px]' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </div>
+            </section>
+
+            {/* Reminders */}
+            {(dueReminders.length > 0 || upcoming.length > 0) && (
+              <section className="card">
+                <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+                  <Icon name="bell" className="w-4 h-4 text-slate-400" />
+                  <h2 className="text-sm font-semibold text-ink">Xatırlatmalar</h2>
+                </div>
+                <ul className="divide-y divide-slate-100">
+                  {[...dueReminders, ...upcoming].map(r => {
+                    const overdue = new Date(r.dueAt) <= new Date();
+                    return (
+                      <li key={r.id} className="flex items-center gap-3 px-5 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-ink">{r.text}</p>
+                          <p className={`text-xs mt-0.5 ${overdue ? 'text-brand-700 font-medium' : 'text-slate-500'}`}>
+                            {overdue ? 'Vaxtı çatıb' : new Date(r.dueAt).toLocaleDateString('az-AZ')}
+                          </p>
+                        </div>
+                        <button onClick={() => markDone(r.id)} className="btn btn-sm btn-secondary" title="Tamamlandı">
+                          <Icon name="check" className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+
+            {done.length > 0 && (
+              <details className="card px-5 py-3.5">
+                <summary className="text-xs font-medium text-slate-500 cursor-pointer">
+                  Tamamlanmış xatırlatmalar ({done.length})
+                </summary>
+                <ul className="mt-3 space-y-1.5">
+                  {done.map(r => (
+                    <li key={r.id} className="text-xs text-slate-400 line-through">{r.text}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+
+          {/* ── Right column: timeline ───────────────────────────────── */}
+          <section className="card">
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <h2 className="text-sm font-semibold text-ink">Tarixçə</h2>
+            </div>
+            <div className="p-5">
+              {timeline.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">Hələ heç bir fəaliyyət yoxdur</p>
+              ) : (
+                <ul>
+                  {timeline.map((item, i) => (
+                    <li key={i} className="flex gap-3">
+                      <div className="w-4 flex-shrink-0 flex flex-col items-center">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                          item.kind === 'offer' ? 'bg-brand-600' : 'bg-slate-300'
+                        }`} />
+                        {i < timeline.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" />}
+                      </div>
+                      <div className="flex-1 pb-5 min-w-0">
+                        {item.kind === 'offer' ? (
+                          <>
+                            <p className="text-xs text-slate-500">
+                              Təklif göndərildi · {timeAgo(item.date)}
+                            </p>
+                            <Link
+                              href={`/offer/${item.data.id}?preview=1`}
+                              target="_blank"
+                              className="text-sm text-ink font-medium hover:text-brand-700 transition-colors"
+                            >
+                              {item.data.destination}
+                            </Link>
+                            {item.data.hotels?.length > 0 && (
+                              <p className="text-xs text-slate-500 truncate">
+                                {item.data.hotels.map((h: { name: string }) => h.name).join(', ')}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {item.data.views_count > 0 && (
+                                <span className="pill pill-neutral">{item.data.views_count} baxış</span>
+                              )}
+                              {item.data.status === 'selected' ? (
+                                <span className="pill pill-strong">Otel seçdi</span>
+                              ) : item.data.customer_response === 'interested' ? (
+                                <span className="pill pill-brand">Maraqlanır</span>
+                              ) : item.data.customer_response === 'price_high' ? (
+                                <span className="pill pill-neutral">Qiymət yüksəkdir</span>
+                              ) : item.data.customer_response === 'not_interested' ? (
+                                <span className="pill pill-neutral text-slate-400">Maraqlanmır</span>
+                              ) : null}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-slate-500">
+                              {ACTIVITY_LABELS[item.data.type]} · {timeAgo(item.date)}
+                            </p>
+                            {(item.data.payload as { text?: string })?.text && (
+                              <p className="text-sm text-slate-700 mt-0.5">
+                                {(item.data.payload as { text: string }).text}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
+      </main>
 
       {/* Reminder modal */}
       {showReminder && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="font-bold text-slate-800">Xatırlatma əlavə et</h2>
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 border border-slate-200 shadow-2xl">
+            <h2 className="font-semibold text-ink">Xatırlatma əlavə et</h2>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Mətn</label>
+              <label className="label">Mətn</label>
               <input
                 type="text"
                 value={reminderText}
@@ -492,7 +472,7 @@ export default function ClientProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tarix</label>
+              <label className="label">Tarix</label>
               <input
                 type="datetime-local"
                 value={reminderDate}
@@ -502,13 +482,13 @@ export default function ClientProfilePage() {
               />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowReminder(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">
+              <button onClick={() => setShowReminder(false)} className="btn btn-md btn-secondary flex-1">
                 Ləğv et
               </button>
               <button
                 onClick={addReminder}
                 disabled={savingReminder || !reminderText || !reminderDate}
-                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+                className="btn btn-md btn-primary flex-1"
               >
                 {savingReminder ? '...' : 'Saxla'}
               </button>
@@ -519,25 +499,25 @@ export default function ClientProfilePage() {
 
       {/* Note modal */}
       {showNote && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="font-bold text-slate-800">Qeyd yaz</h2>
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 border border-slate-200 shadow-2xl">
+            <h2 className="font-semibold text-ink">Qeyd yaz</h2>
             <textarea
               value={noteText}
               onChange={e => setNoteText(e.target.value)}
               placeholder="Müştəri haqqında qeyd..."
               rows={4}
-              className={`${inputCls} resize-none`}
+              className={`${inputCls} h-auto py-2.5 resize-none`}
               autoFocus
             />
             <div className="flex gap-2">
-              <button onClick={() => setShowNote(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">
+              <button onClick={() => setShowNote(false)} className="btn btn-md btn-secondary flex-1">
                 Ləğv et
               </button>
               <button
                 onClick={addNote}
                 disabled={savingNote || !noteText}
-                className="flex-1 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+                className="btn btn-md btn-primary flex-1"
               >
                 {savingNote ? '...' : 'Qeyd et'}
               </button>
@@ -548,39 +528,39 @@ export default function ClientProfilePage() {
 
       {/* Preferences editor modal */}
       {showPrefs && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 my-4">
-            <h2 className="font-bold text-slate-800">Üstünlükləri redaktə et</h2>
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 border border-slate-200 shadow-2xl my-4">
+            <h2 className="font-semibold text-ink">Üstünlükləri redaktə et</h2>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Qeyd</label>
-              <textarea value={prefNotes} onChange={e => setPrefNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} />
+              <label className="label">Qeyd</label>
+              <textarea value={prefNotes} onChange={e => setPrefNotes(e.target.value)} rows={3} className={`${inputCls} h-auto py-2.5 resize-none`} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">İstiqamətlər (vergüllə)</label>
+              <label className="label">İstiqamətlər (vergüllə)</label>
               <input type="text" value={prefDests} onChange={e => setPrefDests(e.target.value)} placeholder="Antalya, Dubai" className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Büdcə min</label>
+                <label className="label">Büdcə min</label>
                 <input type="number" value={prefBudgetMin} onChange={e => setPrefBudgetMin(e.target.value)} className={inputCls} placeholder="0" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Büdcə maks</label>
+                <label className="label">Büdcə maks</label>
                 <input type="number" value={prefBudgetMax} onChange={e => setPrefBudgetMax(e.target.value)} className={inputCls} placeholder="0" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Teqlər (vergüllə)</label>
+              <label className="label">Teqlər (vergüllə)</label>
               <input type="text" value={prefTags} onChange={e => setPrefTags(e.target.value)} placeholder="VIP, ailə" className={inputCls} />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowPrefs(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">
+              <button onClick={() => setShowPrefs(false)} className="btn btn-md btn-secondary flex-1">
                 Ləğv et
               </button>
               <button
                 onClick={savePrefs}
                 disabled={savingPrefs}
-                className="flex-1 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+                className="btn btn-md btn-primary flex-1"
               >
                 {savingPrefs ? '...' : 'Saxla'}
               </button>

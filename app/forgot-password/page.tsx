@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Icon from '@/app/components/Icon';
 
 export default function ForgotPasswordPage() {
   const [email,   setEmail]   = useState('');
@@ -31,38 +32,37 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <span className="text-2xl">✈️</span>
-            <span className="text-white font-black text-xl">TourFlow</span>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-ink mb-4">
+            <span className="text-sm font-bold text-white tracking-wide">TF</span>
           </div>
-          <h1 className="text-white font-bold text-lg">Şifrəni Sıfırla</h1>
+          <h1 className="text-ink font-semibold text-xl">Şifrəni Sıfırla</h1>
           <p className="text-slate-500 text-sm mt-1">Email ünvanınızı daxil edin</p>
         </div>
 
-        <div className="bg-[#1E293B] border border-white/5 rounded-2xl p-6">
+        <div className="card p-6 sm:p-8">
           {sent ? (
             <div className="text-center space-y-4 py-2">
-              <div className="text-4xl">📧</div>
-              <p className="text-white font-bold">Email göndərildi!</p>
-              <p className="text-slate-400 text-sm">
-                <strong className="text-white">{email}</strong> ünvanına şifrə sıfırlama linki göndərildi.
+              <div className="w-11 h-11 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center mx-auto"><Icon name="mail" className="w-5 h-5" /></div>
+              <p className="text-ink font-semibold">Email göndərildi!</p>
+              <p className="text-slate-500 text-sm">
+                <strong className="text-ink font-medium">{email}</strong> ünvanına şifrə sıfırlama linki göndərildi.
                 Spam qutunuzu da yoxlayın.
               </p>
               <Link
                 href="/login"
-                className="inline-block mt-2 text-teal-400 text-sm hover:text-teal-300 transition-colors"
+                className="inline-block mt-2 text-brand-700 text-sm hover:underline"
               >
-                ← Daxil olma səhifəsinə qayıt
+                Girişə qayıt
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                <label className="label">
                   Email ünvanı
                 </label>
                 <input
@@ -71,27 +71,27 @@ export default function ForgotPasswordPage() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="email@agentlik.az"
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                  className="input h-11"
                 />
               </div>
 
               {error && (
-                <div className="bg-red-900/30 border border-red-700/40 text-red-300 rounded-xl px-4 py-3 text-sm">
-                  ⚠️ {error}
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                  {error}
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-colors"
+                className="btn btn-lg btn-primary w-full"
               >
-                {loading ? 'Göndərilir...' : 'Sıfırlama Linki Göndər'}
+                {loading ? 'Göndərilir…' : 'Sıfırlama linki göndər'}
               </button>
 
               <p className="text-center text-xs text-slate-500">
-                <Link href="/login" className="text-teal-400 hover:text-teal-300 transition-colors">
-                  ← Daxil ol
+                <Link href="/login" className="text-brand-700 hover:underline">
+                  Girişə qayıt
                 </Link>
               </p>
             </form>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Icon from '@/app/components/Icon';
 
-export default function CopyButton({ url }: { url: string }) {
+export default function CopyButton({ url, label = 'Link' }: { url: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -12,11 +13,9 @@ export default function CopyButton({ url }: { url: string }) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
-    >
-      {copied ? '✓ Kopyalandı' : '🔗 Linki kopyala'}
+    <button onClick={handleCopy} title="Linki kopyala" className="btn btn-sm btn-secondary">
+      <Icon name={copied ? 'check' : 'link'} className="w-3.5 h-3.5" />
+      {copied ? 'Kopyalandı' : label}
     </button>
   );
 }

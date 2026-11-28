@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Icon from '@/app/components/Icon';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import LoadingOverlay from '@/app/_components/LoadingOverlay';
 import { PLANS, type PlanTier } from '@/lib/planConfig';
@@ -10,7 +11,7 @@ import { PLANS, type PlanTier } from '@/lib/planConfig';
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <span className="inline-block w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     }>
@@ -97,29 +98,28 @@ function RegisterForm() {
     return <LoadingOverlay message="Hesabınız hazırlanır..." />;
   }
 
-  const inputCls =
-    'w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition';
+  const inputCls = 'input h-11';
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center p-4 py-8">
-      <div className="bg-[#111827] border border-white/5 rounded-3xl shadow-2xl p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-8">
+      <div className="card p-8 w-full max-w-md">
 
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-xl font-black text-white tracking-tighter">TF</span>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-ink">
+            <span className="text-base font-bold text-white tracking-wide">TF</span>
           </div>
-          <h1 className="text-xl font-extrabold text-white mt-4">TourFlow</h1>
-          <p className="text-slate-400 text-sm mt-1">Agentlik hesabınızı yaradın</p>
+          <h1 className="text-xl font-semibold text-ink mt-4">TourFlow</h1>
+          <p className="text-slate-500 text-sm mt-1">Agentlik hesabınızı yaradın</p>
         </div>
 
         {/* Selected plan badge */}
         {planInfo && (
-          <div className="mb-5 flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 rounded-xl px-4 py-2.5">
-            <span className="text-teal-400 text-xs">✓</span>
+          <div className="mb-5 flex items-center gap-2.5 bg-brand-50 border border-brand-200 rounded-lg px-3.5 py-2.5">
+            <Icon name="check" className="w-4 h-4 text-brand-700 flex-shrink-0" strokeWidth={2.25} />
             <div>
-              <p className="text-teal-400 text-xs font-bold">{planInfo.name} planı seçildi</p>
-              <p className="text-teal-500/70 text-xs">14 günlük pulsuz sınaq daxildir</p>
+              <p className="text-ink text-xs font-medium">{planInfo.name} planı seçildi</p>
+              <p className="text-slate-500 text-xs">14 günlük pulsuz sınaq daxildir</p>
             </div>
           </div>
         )}
@@ -127,13 +127,13 @@ function RegisterForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* Account info */}
-          <div className="bg-white/5 rounded-2xl p-4 space-y-3 border border-white/5">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+          <div className="space-y-3">
+            <p className="section-title">
               Hesab məlumatları
             </p>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Email *
+              <label className="label">
+                Email
               </label>
               <input
                 type="email"
@@ -145,8 +145,8 @@ function RegisterForm() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Şifrə *
+              <label className="label">
+                Şifrə
               </label>
               <input
                 type="password"
@@ -160,13 +160,13 @@ function RegisterForm() {
           </div>
 
           {/* Agency info */}
-          <div className="bg-white/5 rounded-2xl p-4 space-y-3 border border-white/5">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+          <div className="space-y-3">
+            <p className="section-title">
               Agentlik məlumatları
             </p>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Agentlik adı *
+              <label className="label">
+                Agentlik adı
               </label>
               <input
                 type="text"
@@ -178,8 +178,8 @@ function RegisterForm() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                WhatsApp nömrəsi *
+              <label className="label">
+                WhatsApp nömrəsi
               </label>
               <input
                 type="tel"
@@ -190,12 +190,12 @@ function RegisterForm() {
                 placeholder="+99450XXXXXXX"
                 className={inputCls}
               />
-              <p className="text-slate-600 text-xs mt-1">Nümunə: 0501234567 → +994501234567</p>
+              <p className="text-slate-500 text-xs mt-1.5">Müştərilər sizə bu nömrə ilə yazacaq</p>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl px-4 py-3 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
               {error}
             </div>
           )}
@@ -203,22 +203,22 @@ function RegisterForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-all active:scale-[.98]"
+            className="btn btn-lg btn-primary w-full"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Hesab yaradılır...
+                <span className="inline-block w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                Hesab yaradılır…
               </span>
             ) : (
-              'Qeydiyyatdan keç →'
+              'Hesab yarat'
             )}
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-400 mt-6">
+        <p className="text-center text-sm text-slate-500 mt-6">
           Artıq hesabınız var?{' '}
-          <Link href="/login" className="text-teal-400 font-semibold hover:underline">
+          <Link href="/login" className="text-brand-700 font-medium hover:underline">
             Daxil olun
           </Link>
         </p>

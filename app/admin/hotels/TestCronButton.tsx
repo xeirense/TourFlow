@@ -33,12 +33,12 @@ export default function TestCronButton() {
       <button
         onClick={handleTest}
         disabled={loading}
-        className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-60 transition-colors font-semibold"
+        className="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-60 transition-colors font-semibold"
       >
         {loading ? 'İşləyir...' : '🔧 Test Cron (yalnız sizin agentlik)'}
       </button>
       {result && (
-        <pre className="text-[10px] bg-slate-800 text-green-300 px-3 py-2 rounded-xl overflow-auto max-h-32">
+        <pre className="text-[10px] bg-slate-800 text-brand-300 px-3 py-2 rounded-xl overflow-auto max-h-32">
           {JSON.stringify(result, null, 2)}
         </pre>
       )}

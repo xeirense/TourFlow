@@ -130,7 +130,7 @@ export default function AdminHotelsPage() {
   if (isAdmin === null) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <span className="inline-block w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+        <span className="inline-block w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -140,7 +140,7 @@ export default function AdminHotelsPage() {
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-4">
         <p className="text-2xl">🚫</p>
         <p className="text-slate-700 font-semibold">Admin icazəsi tələb olunur</p>
-        <Link href="/dashboard" className="text-teal-600 text-sm hover:underline">← Dashboard-a qayıt</Link>
+        <Link href="/dashboard" className="text-brand-600 text-sm hover:underline">← Dashboard-a qayıt</Link>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function AdminHotelsPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
-      <header className="bg-[#0A0F1E] border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
+      <header className="bg-ink border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-xl">←</Link>
           <div className="flex-1">
@@ -162,7 +162,7 @@ export default function AdminHotelsPage() {
               onClick={() => setFilter(f => f === 'unverified' ? 'all' : 'unverified')}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 filter === 'unverified'
-                  ? 'bg-amber-500 text-white border-amber-500'
+                  ? 'bg-slate-500 text-white border-slate-500'
                   : 'bg-white/10 text-slate-300 border-white/10 hover:border-white/30'
               }`}
             >
@@ -194,7 +194,7 @@ export default function AdminHotelsPage() {
       <div className="max-w-5xl mx-auto px-4 py-5">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <span className="inline-block w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            <span className="inline-block w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : hotels.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
@@ -208,12 +208,12 @@ export default function AdminHotelsPage() {
             {hotels.map(h => (
               <div
                 key={h.id}
-                className={`bg-white rounded-2xl border px-4 py-3 ${h.verified ? 'border-slate-100' : 'border-amber-200 bg-amber-50/30'}`}
+                className={`bg-white rounded-2xl border px-4 py-3 ${h.verified ? 'border-slate-100' : 'border-slate-200 bg-slate-50/30'}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Stars badge */}
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 ${
-                    h.verified ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'
+                    h.verified ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-700'
                   }`}>
                     {h.stars}★
                   </div>
@@ -225,12 +225,12 @@ export default function AdminHotelsPage() {
                       <span className="text-xs text-slate-400">{h.city}, {h.country}</span>
                       <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{h.default_meal}</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                        h.source === 'seed' ? 'bg-blue-100 text-blue-600' :
-                        h.source === 'agency' ? 'bg-purple-100 text-purple-600' :
-                        'bg-green-100 text-green-600'
+                        h.source === 'seed' ? 'bg-brand-100 text-brand-600' :
+                        h.source === 'agency' ? 'bg-brand-100 text-brand-600' :
+                        'bg-brand-100 text-brand-600'
                       }`}>{h.source}</span>
                       {h.verified && (
-                        <span className="text-[10px] bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-semibold">✓ Təsdiqlənib</span>
+                        <span className="text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">✓ Təsdiqlənib</span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
@@ -259,7 +259,7 @@ export default function AdminHotelsPage() {
                     {!h.verified && (
                       <button
                         onClick={() => handleVerify(h.id)}
-                        className="text-xs text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg px-2.5 py-1 transition-colors font-semibold"
+                        className="text-xs text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 rounded-lg px-2.5 py-1 transition-colors font-semibold"
                       >
                         ✓ Təsdiqlə
                       </button>
@@ -295,7 +295,7 @@ export default function AdminHotelsPage() {
                   type={f.type}
                   value={editRow[f.key] as string}
                   onChange={e => setEditRow(prev => prev ? { ...prev, [f.key]: e.target.value } : null)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             ))}
@@ -331,7 +331,7 @@ export default function AdminHotelsPage() {
                 value={editRow.description_az}
                 onChange={e => setEditRow(prev => prev ? { ...prev, description_az: e.target.value } : null)}
                 rows={2}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
               />
             </div>
 
@@ -342,7 +342,7 @@ export default function AdminHotelsPage() {
                 value={editRow.chain}
                 onChange={e => setEditRow(prev => prev ? { ...prev, chain: e.target.value } : null)}
                 placeholder="Rixos, Hilton..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -353,7 +353,7 @@ export default function AdminHotelsPage() {
                 value={editRow.aliases}
                 onChange={e => setEditRow(prev => prev ? { ...prev, aliases: e.target.value } : null)}
                 placeholder="Sungate, Rixos Kemer..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -367,7 +367,7 @@ export default function AdminHotelsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white text-sm font-bold transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 disabled:opacity-60 text-white text-sm font-bold transition-colors"
               >
                 {saving ? 'Saxlanır...' : 'Saxla'}
               </button>

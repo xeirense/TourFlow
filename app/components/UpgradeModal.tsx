@@ -1,5 +1,6 @@
 'use client';
 
+import Icon from './Icon';
 import { useState } from 'react';
 import type { PlanTier } from '@/lib/planConfig';
 
@@ -30,21 +31,21 @@ export default function UpgradeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-[2px] p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-200">
 
         {/* Lock icon */}
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-4 text-2xl">
-          🔒
+        <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-4">
+          <Icon name="lock" className="w-5 h-5" />
         </div>
 
-        <h2 className="text-center font-black text-gray-900 text-lg leading-tight mb-1">
+        <h2 className="text-center font-semibold text-ink text-base leading-tight mb-1">
           Bu funksiya {PLAN_LABELS[requiredPlan]} paketindədir
         </h2>
-        <p className="text-center text-gray-500 text-sm leading-relaxed mb-5">
-          <span className="font-semibold text-gray-800">{featureName}</span> funksiyasından
+        <p className="text-center text-slate-500 text-sm leading-relaxed mb-5">
+          <span className="font-medium text-ink">{featureName}</span> funksiyasından
           istifadə etmək üçün planınızı yüksəldin.
         </p>
 
@@ -54,19 +55,19 @@ export default function UpgradeModal({
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-bold text-sm transition-colors"
+              className="btn btn-md btn-primary w-full"
             >
               <WaIcon />
               {PLAN_LABELS[requiredPlan]} paketinə keç
             </a>
           ) : (
-            <p className="text-center text-xs text-gray-400 py-2">
+            <p className="text-center text-xs text-slate-400 py-2">
               Planı yüksəltmək üçün sayt administratoru ilə əlaqə saxlayın.
             </p>
           )}
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-2xl text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors hover:bg-gray-50"
+            className="btn btn-md btn-ghost w-full"
           >
             Bağla
           </button>

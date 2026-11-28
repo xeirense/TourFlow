@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { SOURCE_LABELS, type ClientSource } from '@/lib/types';
+import Icon from '@/app/components/Icon';
+import { PageTitle } from '@/app/components/AppHeader';
 
 interface ClientRow {
   id: string;
@@ -51,7 +53,9 @@ export default async function ClientsPage({
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (q)   query = query.or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+  // Strip PostgREST filter syntax characters so user input can't break the filter
+  const safeQ = q.replace(/[%,.()\[\]:*]/g, '').trim();
+  if (safeQ) query = query.or(`full_name.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`);
   if (tag) query = query.contains('tags', [tag]);
   if (src) query = query.eq('source', src);
 
@@ -97,145 +101,118 @@ export default async function ClientsPage({
     return `/dashboard/clients?${params.toString()}`;
   }
 
+  const chipCls = (active: boolean) =>
+    `inline-flex items-center gap-1 h-8 px-3 rounded-full border text-xs font-medium transition-colors ${active ? 'bg-ink text-white border-ink' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-ink'}`;
+
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Header */}
-      <header className="bg-[#0A0F1E] border-b border-white/5 text-white px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-xl">←</Link>
-          <div className="flex-1">
-            <h1 className="font-bold text-base">Müştəri Bazası</h1>
-            <p className="text-slate-500 text-xs">{clients.length} müştəri</p>
-          </div>
-          <a
-            href="/api/clients/export"
-            className="text-xs text-teal-400 hover:text-teal-300 border border-teal-500/30 rounded-lg px-3 py-1.5 transition-colors hidden sm:block"
-          >
-            ⬇ CSV
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+      <PageTitle
+        title="Müştərilər"
+        subtitle={`${clients.length} müştəri · təklif göndərdikcə avtomatik əlavə olunur`}
+        actions={
+          <a href="/api/clients/export" className="btn btn-sm btn-secondary">
+            <Icon name="download" className="w-3.5 h-3.5" />
+            CSV ixrac
           </a>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="max-w-4xl mx-auto px-4 py-5 space-y-4">
-
-        {/* Search + filter bar */}
-        <form method="GET" className="flex gap-2">
+      {/* Search */}
+      <form method="GET" className="flex gap-2">
+        <div className="relative flex-1">
+          <Icon name="search" className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="Ad və ya telefon axtar..."
-            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Ad və ya telefon nömrəsi"
+            className="input pl-9"
           />
-          <button
-            type="submit"
-            className="bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
-          >
-            Axtar
-          </button>
-        </form>
-
-        {/* Filter chips */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <Link
-            href={buildFilter('hot', hot ? '' : '1')}
-            className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
-              hot ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-600 border-slate-200 hover:border-red-400'
-            }`}
-          >
-            🔥 İsti müştərilər
-          </Link>
-          {(['whatsapp','instagram','referral','walk-in','other'] as ClientSource[]).map(s => (
-            <Link
-              key={s}
-              href={buildFilter('source', src === s ? '' : s)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                src === s ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-400'
-              }`}
-            >
-              {SOURCE_LABELS[s]}
-            </Link>
-          ))}
-          {allTags.slice(0, 8).map(t => (
-            <Link
-              key={t}
-              href={buildFilter('tag', tag === t ? '' : t)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                tag === t ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400'
-              }`}
-            >
-              #{t}
-            </Link>
-          ))}
         </div>
+        <button type="submit" className="btn btn-md btn-dark">Axtar</button>
+      </form>
 
-        {/* Client list */}
-        {clients.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
-            <p className="text-4xl mb-3">👤</p>
-            <p className="text-slate-500 text-sm">Müştəri tapılmadı</p>
-            <p className="text-slate-400 text-xs mt-1">
-              Yeni təklif göndərdikdə müştərilər avtomatik yaradılır
-            </p>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Link href={buildFilter('hot', hot ? '' : '1')} className={chipCls(hot)}>
+          <Icon name="flame" className="w-3.5 h-3.5" />
+          İsti müştərilər
+        </Link>
+        <span className="w-px h-5 bg-slate-200 mx-1" />
+        {(['whatsapp','instagram','referral','walk-in','other'] as ClientSource[]).map(s => (
+          <Link key={s} href={buildFilter('source', src === s ? '' : s)} className={chipCls(src === s)}>
+            {SOURCE_LABELS[s]}
+          </Link>
+        ))}
+        {allTags.slice(0, 8).map(t => (
+          <Link key={t} href={buildFilter('tag', tag === t ? '' : t)} className={chipCls(tag === t)}>
+            #{t}
+          </Link>
+        ))}
+      </div>
+
+      {/* Client list */}
+      {clients.length === 0 ? (
+        <div className="card text-center py-16 px-5">
+          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Icon name="user" className="w-6 h-6" />
           </div>
-        ) : (
-          <ul className="space-y-2">
-            {clients.map(c => {
-              const hot = isHot(c);
-              const offerCount = c.offers?.[0]?.count ?? 0;
-              const travelersText = `${c.travelers.adults} böyük${c.travelers.children > 0 ? `, ${c.travelers.children} uşaq` : ''}`;
-              return (
-                <li key={c.id}>
-                  <Link
-                    href={`/dashboard/clients/${c.id}`}
-                    className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 px-4 py-3.5 hover:shadow-sm hover:border-slate-200 transition-all group"
-                  >
-                    {/* Avatar */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0 ${
-                      hot ? 'bg-red-100 text-red-600' : 'bg-teal-50 text-teal-700'
-                    }`}>
-                      {c.full_name.charAt(0).toUpperCase()}
-                    </div>
+          <p className="text-ink font-medium text-sm mt-4">Müştəri tapılmadı</p>
+          <p className="text-slate-500 text-sm mt-1">Yeni təklif göndərdikdə müştəri kartı avtomatik yaranır.</p>
+        </div>
+      ) : (
+        <ul className="card divide-y divide-slate-100">
+          {clients.map(c => {
+            const isHotClient = isHot(c);
+            const offerCount  = c.offers?.[0]?.count ?? 0;
+            const travelersText = `${c.travelers.adults} böyük${c.travelers.children > 0 ? `, ${c.travelers.children} uşaq` : ''}`;
+            return (
+              <li key={c.id}>
+                <Link
+                  href={`/dashboard/clients/${c.id}`}
+                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/70 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+                    {c.full_name.charAt(0).toUpperCase()}
+                  </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 text-sm">{c.full_name}</span>
-                        {hot && (
-                          <span className="text-[10px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full">🔥 İSTİ</span>
-                        )}
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{SOURCE_LABELS[c.source]}</span>
-                        {c.tags.slice(0, 2).map(t => (
-                          <span key={t} className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">#{t}</span>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        {c.phone && <span className="text-xs text-slate-400">{c.phone}</span>}
-                        <span className="text-xs text-slate-400">{travelersText}</span>
-                        {c.preferred_destinations.length > 0 && (
-                          <span className="text-xs text-slate-400 hidden sm:block">
-                            {c.preferred_destinations.slice(0, 2).join(', ')}
-                          </span>
-                        )}
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-ink text-sm">{c.full_name}</span>
+                      {isHotClient && (
+                        <span className="pill pill-brand">
+                          <Icon name="flame" className="w-3 h-3" />
+                          İsti
+                        </span>
+                      )}
+                      {c.tags.slice(0, 2).map(t => (
+                        <span key={t} className="pill pill-neutral">#{t}</span>
+                      ))}
                     </div>
-
-                    {/* Stats */}
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs font-bold text-slate-700">{offerCount} təklif</p>
-                      {(c.total_views ?? 0) > 0 && (
-                        <p className="text-xs text-slate-400">{c.total_views} baxış</p>
+                    <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 flex-wrap text-xs text-slate-500">
+                      {c.phone && <span>{c.phone}</span>}
+                      <span>{travelersText}</span>
+                      <span>{SOURCE_LABELS[c.source]}</span>
+                      {c.preferred_destinations.length > 0 && (
+                        <span className="hidden sm:inline">{c.preferred_destinations.slice(0, 2).join(', ')}</span>
                       )}
                     </div>
+                  </div>
 
-                    <span className="text-slate-300 group-hover:text-slate-500 transition-colors text-sm">→</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm text-ink">{offerCount} <span className="text-slate-500 text-xs">təklif</span></p>
+                    {(c.total_views ?? 0) > 0 && (
+                      <p className="text-xs text-slate-500">{c.total_views} baxış</p>
+                    )}
+                  </div>
+
+                  <Icon name="chevron" className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </main>
   );
 }

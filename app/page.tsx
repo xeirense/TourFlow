@@ -2,14 +2,45 @@ import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { PLANS, type PlanTier } from '@/lib/planConfig';
+import Icon, { type IconName } from '@/app/components/Icon';
 
 export const metadata = {
-  title: 'TourFlow — Azərbaycanda Tur Agentliyi üçün Rəqəmsal Platforma',
+  title: 'TourFlow — Tur agentlikləri üçün təklif və satış platforması',
   description:
-    'Hər müştəriyə 30 saniyədə brendlənmiş, peşəkar tur təklifi göndərin. Real vaxt analitika. WhatsApp inteqrasiyası. Müştəri rəyləri.',
+    'Müştəriyə dəqiqələr ərzində brendlənmiş tur təklifi göndərin, linkin açıldığını anında görün, cavabı bir kliklə alın. Azərbaycan tur agentlikləri üçün.',
 };
 
 const WA_SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
+
+const STEPS: { n: string; icon: IconName; title: string; desc: string }[] = [
+  {
+    n: '01',
+    icon: 'bed',
+    title: 'Otelləri əlavə edin',
+    desc: 'Kataloqdan oteli seçin — ulduz, şəhər və qidalanma özü dolur. Qiyməti yazın, 5-ə qədər variant əlavə edin.',
+  },
+  {
+    n: '02',
+    icon: 'link',
+    title: 'Linki göndərin',
+    desc: 'Agentliyinizin loqosu və müştərinin adı ilə səliqəli təklif səhifəsi hazırlanır. Linki WhatsApp-la göndərin.',
+  },
+  {
+    n: '03',
+    icon: 'bell',
+    title: 'Reaksiyanı görün',
+    desc: 'Müştəri linki açanda, cavab verəndə və ya otel seçəndə bildiriş alırsınız. Doğru anda zəng edirsiniz.',
+  },
+];
+
+const FEATURES: { icon: IconName; title: string; desc: string }[] = [
+  { icon: 'eye',      title: 'Baxış izləmə',         desc: 'Müştərinin təklifi nə vaxt və neçə dəfə açdığını görün.' },
+  { icon: 'message',  title: 'Bir kliklə cavab',     desc: '“Maraqlanıram”, “Qiymət yüksəkdir” — müştəri zəng etmədən fikrini bildirir.' },
+  { icon: 'building', title: 'Agentliyinizin brendi', desc: 'Hər təklifdə loqonuz, adınız və menecerin əlaqə məlumatları.' },
+  { icon: 'user',     title: 'Müştəri bazası',       desc: 'Hər müştərinin tarixçəsi, üstünlükləri və təklifləri bir kartda.' },
+  { icon: 'clock',    title: 'Avtomatik xatırlatma', desc: 'Cavab gəlməyəndə, təklifin müddəti bitəndə — sistem xatırladır.' },
+  { icon: 'chart',    title: 'Satış analitikası',    desc: 'Satış hunisi, populyar istiqamətlər və dönüşüm nisbəti.' },
+];
 
 export default async function LandingPage() {
   const supabase = await createSupabaseServerClient();
@@ -21,290 +52,200 @@ export default async function LandingPage() {
     : '/register';
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans">
+    <div className="min-h-screen bg-white text-ink">
 
-      {/* ════════════════════════════════════════════════════════════
-          NAV
-      ════════════════════════════════════════════════════════════ */}
-      <nav className="border-b border-gray-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 px-5 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-[#0A0F1E] rounded-lg flex items-center justify-center">
-              <span className="text-xs font-black text-white tracking-tighter">TF</span>
-            </div>
-            <span className="font-black text-lg tracking-tight text-gray-900">TourFlow</span>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <a
-              href="#qiymetler"
-              className="hidden sm:block text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
-            >
-              Qiymətlər
-            </a>
-            <Link
-              href="/login"
-              className="hidden min-[360px]:block text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
-            >
-              Daxil ol
-            </Link>
-            <Link
-              href="/register"
-              className="bg-[#0A0F1E] hover:bg-gray-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
-            >
-              Pulsuz Başla
-            </Link>
+      {/* ── Nav ─────────────────────────────────────────────────────────── */}
+      <nav className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-ink rounded-lg flex items-center justify-center text-[11px] font-bold text-white tracking-wide">TF</span>
+            <span className="font-semibold tracking-tight">TourFlow</span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <a href="#imkanlar" className="hidden md:inline-flex btn btn-md btn-ghost">İmkanlar</a>
+            <a href="#qiymetler" className="hidden sm:inline-flex btn btn-md btn-ghost">Qiymətlər</a>
+            <Link href="/login" className="btn btn-md btn-ghost">Daxil ol</Link>
+            <Link href="/register" className="btn btn-md btn-dark">Pulsuz başla</Link>
           </div>
         </div>
       </nav>
 
-      {/* ════════════════════════════════════════════════════════════
-          HERO
-      ════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#0A0F1E] text-white">
-        <div className="max-w-5xl mx-auto px-5 pt-20 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold px-4 py-1.5 rounded-full mb-8 tracking-wide uppercase">
-            Azərbaycanın Tur Agentlikləri Üçün
+      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden border-b border-slate-200">
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#F8FAFC,#FFFFFF)]" aria-hidden="true" />
+        <div className="relative max-w-6xl mx-auto px-5 pt-20 pb-16 sm:pt-28 sm:pb-24 grid lg:grid-cols-[1.1fr_1fr] gap-14 items-center">
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 border border-slate-200 bg-white rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-600" />
+              Azərbaycan tur agentlikləri üçün
+            </p>
+            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.08]">
+              Tur təklifini göndərin.<br />
+              <span className="text-slate-400">Müştərinin reaksiyasını görün.</span>
+            </h1>
+            <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-xl">
+              TourFlow ilə hər müştəriyə dəqiqələr ərzində agentliyinizin brendi ilə peşəkar təklif hazırlayın.
+              Müştəri linki açan, cavab verən və ya otel seçən kimi bilirsiniz.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Link href="/register" className="btn btn-lg btn-primary">
+                14 gün pulsuz sınayın
+                <Icon name="chevron" className="w-4 h-4" strokeWidth={2} />
+              </Link>
+              <a href="#qiymetler" className="btn btn-lg btn-secondary">Qiymətlərə bax</a>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Kredit kartı tələb olunmur · İstənilən vaxt dayandırın</p>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black leading-tight mb-6 tracking-tight">
-            Müştərini Heyrətləndir.<br />
-            <span className="text-teal-400">Rəqibi Arxada Qoy.</span>
-          </h1>
-
-          <p className="text-gray-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-            TourFlow ilə hər müştəriyə{' '}
-            <span className="text-white font-semibold">30 saniyədə</span>{' '}
-            fərdi, brendlənmiş tur prezentasiyası göndər.
-            Müştərin linki açan kimi sən bilirsən. Rəqibin hələ Excel-dədir.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-bold text-base px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-teal-900/40"
-            >
-              Pulsuz Başla →
-            </Link>
-            <a
-              href="#qiymetler"
-              className="inline-flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-base px-8 py-4 rounded-2xl transition-colors"
-            >
-              Qiymətlərə bax
-            </a>
-          </div>
-        </div>
-
-        {/* Stats strip */}
-        <div className="border-t border-white/5 bg-white/3">
-          <div className="max-w-5xl mx-auto px-5 py-8 grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-3xl font-black text-white">30s</p>
-              <p className="text-gray-500 text-sm mt-1">Hər yeni təklif üçün</p>
-            </div>
-            <div>
-              <p className="text-3xl font-black text-white">5</p>
-              <p className="text-gray-500 text-sm mt-1">Otel 1 linklə</p>
-            </div>
-            <div>
-              <p className="text-3xl font-black text-white">Ani</p>
-              <p className="text-gray-500 text-sm mt-1">Müştəri bildirişi</p>
+          {/* Product preview */}
+          <div className="relative">
+            <div className="card p-5 shadow-[0_24px_60px_-20px_rgba(11,15,23,0.25)]">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-lg bg-ink text-white text-xs font-semibold flex items-center justify-center">S</span>
+                  <div>
+                    <p className="text-sm font-medium">Sunrise Travel</p>
+                    <p className="text-xs text-slate-500">Fərdi tur təklifi</p>
+                  </div>
+                </div>
+                <span className="pill pill-brand">
+                  <Icon name="eye" className="w-3 h-3" />
+                  3 baxış
+                </span>
+              </div>
+              <div className="pt-4 space-y-3">
+                {[
+                  { name: 'Sahil Resort & Spa', meta: '5 ulduz · Ultra hər şey daxil', price: '1 450' },
+                  { name: 'Mavi Laguna Hotel',  meta: '5 ulduz · Hər şey daxil',       price: '1 180' },
+                ].map((h, i) => (
+                  <div key={h.name} className={`rounded-lg border p-3.5 flex items-center justify-between ${i === 0 ? 'border-ink' : 'border-slate-200'}`}>
+                    <div>
+                      <p className="text-sm font-medium">{h.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{h.meta}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{h.price} ₼</p>
+                      <p className="text-[11px] text-slate-500">nəfər başına</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
+                  <Icon name="check" className="w-4 h-4 text-brand-600" strokeWidth={2.25} />
+                  <p className="text-xs text-slate-700"><span className="font-medium text-ink">Aysel xanım</span> Sahil Resort & Spa otelini seçdi</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════════════
-          HOW IT WORKS
-      ════════════════════════════════════════════════════════════ */}
-      <section className="bg-white py-20 px-5">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-400 mb-12">
-            Necə işləyir?
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                icon: '🏨',
-                title: 'Otelləri daxil et',
-                desc: 'Müştəri üçün hazırladığın otel variantlarını, qiymətləri, tarixi və şəkilləri əlavə et. 30 saniyə.',
-              },
-              {
-                step: '02',
-                icon: '🔗',
-                title: 'Brendlənmiş link hazırlanır',
-                desc: 'TourFlow agentlik loqonla, müştərinin adıyla peşəkar bir prezentasiya səhifəsi yaradır.',
-              },
-              {
-                step: '03',
-                icon: '💬',
-                title: 'Müştəri baxanda sən bilirsən',
-                desc: 'Link açılır, sən email alırsan. Müştəri WhatsApp-a keçir, sən ilk bilənsən. İndi zəng et.',
-              },
-            ].map(s => (
-              <div key={s.step} className="relative">
-                <div className="text-xs font-black text-gray-200 mb-4 tracking-widest">{s.step}</div>
-                <div className="text-3xl mb-3">{s.icon}</div>
-                <h3 className="font-bold text-gray-900 text-base mb-2">{s.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
+      {/* ── How it works ────────────────────────────────────────────────── */}
+      <section className="py-20 sm:py-24 px-5">
+        <div className="max-w-6xl mx-auto">
+          <p className="section-title">Necə işləyir</p>
+          <h2 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight max-w-xl">
+            Üç addım — Excel, skrinşot və uzun mesajlar olmadan
+          </h2>
+          <div className="mt-12 grid sm:grid-cols-3 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+            {STEPS.map(s => (
+              <div key={s.n} className="bg-white p-6 sm:p-7">
+                <div className="flex items-center justify-between">
+                  <span className="w-10 h-10 rounded-lg bg-slate-100 text-ink flex items-center justify-center">
+                    <Icon name={s.icon} className="w-5 h-5" />
+                  </span>
+                  <span className="text-xs font-medium text-slate-400 tabular-nums">{s.n}</span>
+                </div>
+                <h3 className="mt-5 font-semibold">{s.title}</h3>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════════════
-          FEATURES — "Niyə TourFlow?"
-      ════════════════════════════════════════════════════════════ */}
-      <section className="bg-gray-50 py-20 px-5 border-t border-gray-100">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
-            Niyə TourFlow?
-          </p>
-          <h2 className="text-center text-2xl sm:text-3xl font-black text-gray-900 mb-12">
-            Excel dövründə qalmaq lazım deyil
+      {/* ── Features ────────────────────────────────────────────────────── */}
+      <section id="imkanlar" className="py-20 sm:py-24 px-5 bg-slate-50 border-y border-slate-200">
+        <div className="max-w-6xl mx-auto">
+          <p className="section-title">İmkanlar</p>
+          <h2 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight max-w-xl">
+            Satışı itirməmək üçün lazım olan hər şey
           </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              {
-                icon: '🔔',
-                title: 'Müştəri Görməzdən Sən Bilirsən',
-                desc: 'Müştəri linki açan kimi email alırsan. WhatsApp-a keçəndə — ani bildiriş. Soyuq tərəfdaşı isti müştəriyə çevirirsən.',
-              },
-              {
-                icon: '💬',
-                title: 'Müştəri Birbaşa Cavab Verir',
-                desc: '"Maraqlanıram", "Qiymət yüksəkdir" — müştəri bir klikdə cavab verir. Artıq zəng gözləmirsən.',
-              },
-              {
-                icon: '🏷️',
-                title: 'Hər Səhifədə Sənin Brendin',
-                desc: 'Agentliyin loqosu, adı, menecerin adı — müştəri hər dəfə sənin brendinlə tanış olur. Professionallıq görünür.',
-              },
-              {
-                icon: '📊',
-                title: 'Real Vaxt Analitika',
-                desc: 'Kim nəyə baxdı, hansı istiqamət daha çox maraqlandırdı, dönüşüm nisbəti nədir — hamısı bir yerdə.',
-              },
-              {
-                icon: '⌛',
-                title: 'Vaxt Təzyiqi Avtomatik İşləyir',
-                desc: 'Hər təklifin bitmə tarixi var. Müştəri görür ki, vaxt azalır. Bu, qərara gəlməyi sürətləndirir.',
-              },
-              {
-                icon: '📱',
-                title: 'WhatsApp-First — Çünki Azərbaycanda İş Belə Aparılır',
-                desc: 'Hər otel kartında birbaşa WhatsApp düyməsi var. Müştəri 1 klikdə sənə müraciət edir.',
-              },
-            ].map(f => (
-              <div
-                key={f.title}
-                className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-gray-200 hover:shadow-sm transition-all"
-              >
-                <div className="text-2xl mb-3">{f.icon}</div>
-                <h3 className="font-bold text-gray-900 text-sm mb-2 leading-snug">{f.title}</h3>
-                <p className="text-gray-500 text-xs leading-relaxed">{f.desc}</p>
+          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map(f => (
+              <div key={f.title} className="card p-6">
+                <span className="w-9 h-9 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center">
+                  <Icon name={f.icon} className="w-[18px] h-[18px]" />
+                </span>
+                <h3 className="mt-4 font-semibold text-[15px]">{f.title}</h3>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════════════
-          PRICING
-      ════════════════════════════════════════════════════════════ */}
-      <section id="qiymetler" className="bg-white py-20 px-5 border-t border-gray-100">
-        <div className="max-w-5xl mx-auto">
+      {/* ── Pricing ─────────────────────────────────────────────────────── */}
+      <section id="qiymetler" className="py-20 sm:py-24 px-5">
+        <div className="max-w-6xl mx-auto">
+          <div className="max-w-xl">
+            <p className="section-title">Qiymətlər</p>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+              Agentliyinizin ölçüsünə uyğun plan
+            </h2>
+            <p className="mt-3 text-slate-600">
+              Aylıq ödəniş, illik öhdəlik yoxdur. Hər plan 14 günlük pulsuz sınaqla başlayır.
+            </p>
+          </div>
 
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
-            Qiymətlər
-          </p>
-          <h2 className="text-center text-2xl sm:text-3xl font-black text-gray-900 mb-2">
-            Agentliyinizin ölçüsünə uyğun plan seçin
-          </h2>
-          <p className="text-center text-gray-500 text-sm mb-10 max-w-xl mx-auto leading-relaxed">
-            Bütün planlar aylıqdır, illik öhdəlik yoxdur.
-            Qeydiyyatdan keçən hər agentliyə <span className="font-semibold text-gray-700">14 günlük pulsuz sınaq</span> verilir.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
+          <div className="mt-12 grid sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
             {(Object.keys(PLANS) as PlanTier[]).map(tier => {
-              const plan = PLANS[tier];
-              const isEnterprise = tier === 'enterprise';
+              const plan          = PLANS[tier];
+              const isEnterprise  = tier === 'enterprise';
               const isHighlighted = plan.highlighted;
 
               return (
                 <div
                   key={tier}
-                  className={`relative rounded-2xl border p-6 flex flex-col gap-5 transition-shadow ${
-                    isHighlighted
-                      ? 'border-teal-400 shadow-lg shadow-teal-100 bg-gradient-to-b from-teal-50/60 to-white'
-                      : 'border-gray-200 bg-white hover:shadow-md'
+                  className={`relative rounded-xl border p-6 flex flex-col bg-white ${
+                    isHighlighted ? 'border-ink ring-1 ring-ink' : 'border-slate-200'
                   }`}
                 >
-                  {/* "Ən çox seçilən" badge */}
                   {isHighlighted && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                      <span className="inline-flex items-center gap-1 bg-teal-500 text-white text-[11px] font-black px-3 py-1 rounded-full shadow whitespace-nowrap">
-                        ⭐ Ən çox seçilən
-                      </span>
-                    </div>
+                    <span className="absolute -top-3 left-6 pill pill-strong">Ən çox seçilən</span>
                   )}
 
-                  {/* Header */}
-                  <div>
-                    <h3 className={`font-black text-lg ${isHighlighted ? 'text-teal-700' : 'text-gray-900'}`}>
-                      {plan.name}
-                    </h3>
-                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">{plan.tagline}</p>
-                  </div>
+                  <h3 className="font-semibold">{plan.name}</h3>
+                  <p className="text-slate-500 text-xs mt-1 leading-relaxed min-h-[32px]">{plan.tagline}</p>
 
-                  {/* Price */}
-                  <div>
+                  <div className="mt-5">
                     {isEnterprise ? (
-                      <p className="text-3xl font-black text-gray-900">Xüsusi</p>
+                      <p className="text-3xl font-semibold tracking-tight">Fərdi</p>
                     ) : (
-                      <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-gray-900">
-                          {plan.price} ₼
-                        </span>
-                        <span className="text-gray-400 text-sm pb-0.5">/ ay</span>
-                      </div>
+                      <p className="flex items-baseline gap-1">
+                        <span className="text-3xl font-semibold tracking-tight">{plan.price} ₼</span>
+                        <span className="text-slate-500 text-sm">/ ay</span>
+                      </p>
                     )}
                   </div>
 
-                  {/* CTA */}
                   {isEnterprise ? (
-                    <a
-                      href={enterpriseWa}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 rounded-xl border border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 font-bold text-sm transition-colors text-center"
-                    >
-                      {plan.ctaLabel}
+                    <a href={enterpriseWa} target="_blank" rel="noopener noreferrer" className="btn btn-md btn-secondary w-full mt-5">
+                      Bizimlə əlaqə
                     </a>
                   ) : (
                     <Link
                       href={`/register?plan=${tier}`}
-                      className={`w-full py-3 rounded-xl font-bold text-sm transition-colors text-center ${
-                        isHighlighted
-                          ? 'bg-teal-500 hover:bg-teal-400 text-white shadow-sm shadow-teal-200'
-                          : 'bg-[#0A0F1E] hover:bg-gray-800 text-white'
-                      }`}
+                      className={`btn btn-md w-full mt-5 ${isHighlighted ? 'btn-primary' : 'btn-dark'}`}
                     >
-                      {plan.ctaLabel}
+                      Pulsuz sınağa başla
                     </Link>
                   )}
 
-                  {/* Features */}
-                  <ul className="space-y-2.5 flex-1">
+                  <ul className="mt-6 pt-6 border-t border-slate-100 space-y-2.5 flex-1">
                     {plan.highlights.map(h => (
                       <li key={h} className="flex items-start gap-2">
-                        <span className={`mt-0.5 text-xs flex-shrink-0 ${isHighlighted ? 'text-teal-500' : 'text-gray-400'}`}>
-                          ✓
-                        </span>
-                        <span className="text-gray-600 text-xs leading-relaxed">{h}</span>
+                        <Icon name="check" className="w-4 h-4 mt-px flex-shrink-0 text-ink" strokeWidth={2} />
+                        <span className="text-slate-600 text-[13px] leading-relaxed">{h}</span>
                       </li>
                     ))}
                   </ul>
@@ -312,50 +253,40 @@ export default async function LandingPage() {
               );
             })}
           </div>
-
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════════════
-          CTA SECTION
-      ════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#0A0F1E] text-white py-20 px-5">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-black mb-5 leading-tight">
-            Rəqibindən əvvəl başla.<br />
-            <span className="text-teal-400">Müştərini qazan.</span>
-          </h2>
-          <p className="text-gray-400 text-base mb-8 leading-relaxed">
-            Hər gün tur agentlikləri müştərilərini vaxtında cavab verə bilmədikləri üçün itirir.
-            TourFlow ilə sən həmişə birinci bilənsən.
-          </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-bold text-base px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-teal-900/40"
-          >
-            İndi Pulsuz Başla →
-          </Link>
-          <p className="text-gray-600 text-xs mt-4">Kredit kartı tələb olunmur · 14 gün pulsuz</p>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════════════
-          FOOTER
-      ════════════════════════════════════════════════════════════ */}
-      <footer className="bg-[#060B14] border-t border-white/5 px-5 py-10 text-center">
-        <div className="flex items-center justify-center gap-2.5 mb-3">
-          <div className="w-6 h-6 bg-white/10 rounded flex items-center justify-center">
-            <span className="text-xs font-black text-white leading-none">TF</span>
+      {/* ── CTA ─────────────────────────────────────────────────────────── */}
+      <section className="px-5 pb-20 sm:pb-24">
+        <div className="max-w-6xl mx-auto rounded-2xl bg-ink text-white px-6 py-14 sm:px-14 sm:py-16 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          <div className="max-w-xl">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+              Müştəri cavab gözləmir. Siz də gözləməyin.
+            </h2>
+            <p className="mt-3 text-slate-400 leading-relaxed">
+              İlk təklifinizi bu gün göndərin və müştərinin reaksiyasını real vaxtda görün.
+            </p>
           </div>
-          <span className="font-black text-sm text-white">TourFlow</span>
+          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+            <Link href="/register" className="btn btn-lg btn-primary">14 gün pulsuz sınayın</Link>
+            <Link href="/login" className="btn btn-lg border border-white/20 text-white hover:bg-white/10">Daxil ol</Link>
+          </div>
         </div>
-        <p className="text-gray-600 text-xs">
-          Azərbaycan turizm agentlikləri üçün hazırlanıb.
-        </p>
-        <div className="flex items-center justify-center gap-6 mt-5">
-          <a href="#qiymetler" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Qiymətlər</a>
-          <Link href="/login"    className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Daxil ol</Link>
-          <Link href="/register" className="text-gray-600 hover:text-gray-400 text-xs transition-colors">Qeydiyyat</Link>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      <footer className="border-t border-slate-200 px-5 py-10">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-6 bg-ink rounded-md flex items-center justify-center text-[9px] font-bold text-white">TF</span>
+            <span className="text-sm font-medium">TourFlow</span>
+            <span className="text-xs text-slate-400 ml-2">Azərbaycan tur agentlikləri üçün</span>
+          </div>
+          <div className="flex items-center gap-6 text-xs text-slate-500">
+            <a href="#qiymetler" className="hover:text-ink transition-colors">Qiymətlər</a>
+            <Link href="/login" className="hover:text-ink transition-colors">Daxil ol</Link>
+            <Link href="/register" className="hover:text-ink transition-colors">Qeydiyyat</Link>
+          </div>
         </div>
       </footer>
     </div>

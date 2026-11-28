@@ -1,4 +1,5 @@
 import type { PlanTier } from '@/lib/planConfig';
+import Icon from './Icon';
 
 const PLAN_LABELS: Record<PlanTier, string> = {
   starter:    'Starter',
@@ -25,7 +26,7 @@ export default function LockedCard({
 }: LockedCardProps) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-slate-100 bg-white ${heightCls}`}
+      className={`relative overflow-hidden card ${heightCls}`}
     >
       {/* Blurred fake content */}
       <div className="absolute inset-0 p-5 select-none pointer-events-none blur-sm opacity-30">
@@ -39,11 +40,11 @@ export default function LockedCard({
 
       {/* Lock overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 backdrop-blur-[2px]">
-        <span className="text-2xl">🔒</span>
-        <p className="text-sm font-bold text-gray-700 text-center px-4">{title}</p>
-        <p className="text-xs text-gray-500 text-center px-6 leading-relaxed">
+        <span className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center"><Icon name="lock" className="w-4 h-4" /></span>
+        <p className="text-sm font-semibold text-ink text-center px-4">{title}</p>
+        <p className="text-xs text-slate-500 text-center px-6 leading-relaxed">
           Bu modul{' '}
-          <span className="font-semibold text-teal-600">
+          <span className="font-medium text-ink">
             {PLAN_LABELS[requiredPlan]}
           </span>{' '}
           və yuxarı planlarda aktivdir

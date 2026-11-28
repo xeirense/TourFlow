@@ -9,6 +9,9 @@ import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import ClientCombobox, { type ClientHit } from '@/app/dashboard/clients/ClientCombobox';
 import HotelCombobox, { type HotelHit } from '@/app/create/HotelCombobox';
 import { normalizePhone } from '@/lib/phone';
+import Icon, { INCLUDE_ICON, type IconName } from '@/app/components/Icon';
+import { PageTitle } from '@/app/components/AppHeader';
+import { WaIcon } from '@/app/dashboard/WhatsAppMsgButton';
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WA ?? '';
 
@@ -61,7 +64,7 @@ function formatDisplayDate(iso: string): string {
 export default function CreatePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+      <div className="min-h-screen bg-ink flex items-center justify-center">
         <span className="inline-block w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     }>
@@ -450,135 +453,97 @@ function CreatePageContent() {
     setWaMsg('');
   }
 
-  async function handleLogout() {
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Success modal
   // ─────────────────────────────────────────────────────────────────────────────
   if (offerLink) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 py-8">
-        <div className="bg-[#1E293B] border border-white/5 rounded-3xl shadow-2xl p-6 w-full max-w-sm">
-
-          {/* Header */}
-          <div className="text-center mb-5">
-            <div className="text-4xl mb-2">🎉</div>
-            <h2 className="text-lg font-bold text-white">Təklif hazırdır!</h2>
-            {isAlt && (
-              <span className="inline-block mt-1.5 text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full">
-                ↩ Alternativ Təklif
-              </span>
-            )}
-            <p className="text-xs text-slate-400 mt-2">
-              Aşağıdakı linki müştəriyə göndərin
-            </p>
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-10">
+        <div className="card p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center flex-shrink-0">
+              <Icon name="check" className="w-5 h-5" strokeWidth={2.25} />
+            </span>
+            <div>
+              <h1 className="text-lg font-semibold text-ink">Təklif hazırdır</h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {isAlt ? 'Alternativ təklif yaradıldı. ' : ''}Linki müştəriyə göndərin.
+              </p>
+            </div>
           </div>
 
-          {/* Link box */}
-          <div className="bg-white/5 rounded-xl p-3 text-xs text-teal-400 font-mono break-all mb-4 select-all border border-white/10">
-            {offerLink}
-          </div>
-
-          <div className="flex gap-2 mb-5">
-            <button
-              onClick={copyLink}
-              className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold text-sm transition-colors"
-            >
-              {copied ? '✓ Kopyalandı' : '📋 Linki kopyala'}
+          {/* Link */}
+          <div className="mt-6 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 pl-3 pr-1.5 py-1.5">
+            <Icon name="link" className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <span className="flex-1 min-w-0 text-sm text-ink truncate select-all">{offerLink}</span>
+            <button onClick={copyLink} className="btn btn-sm btn-secondary">
+              <Icon name={copied ? 'check' : 'copy'} className="w-3.5 h-3.5" />
+              {copied ? 'Kopyalandı' : 'Kopyala'}
             </button>
-            <Link
-              href="/dashboard"
-              className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-medium text-sm transition-colors text-center"
-            >
-              📊 Dashboard
-            </Link>
           </div>
 
-          {/* ── WhatsApp Message Generator ──────────────────────────────── */}
-          <div className="border-t border-white/10 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              📱 Müştəriyə göndəriləcək mesaj
-            </p>
+          {/* WhatsApp message */}
+          <div className="mt-6">
+            <label className="label">Müştəriyə göndəriləcək mesaj</label>
             <textarea
               value={waMsg}
               onChange={e => setWaMsg(e.target.value)}
               rows={9}
-              className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-slate-200 resize-none focus:outline-none focus:ring-1 focus:ring-teal-500 font-mono leading-relaxed"
+              className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-ink resize-none focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 leading-relaxed"
             />
-            <div className="flex gap-2">
-              <button
-                onClick={copyWaMsg}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                  waCopied
-                    ? 'bg-teal-500/30 text-teal-300'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                }`}
-              >
-                {waCopied ? '✓ Kopyalandı' : '📋 Kopyala'}
+            <div className="flex gap-2 mt-3">
+              <button onClick={copyWaMsg} className="btn btn-md btn-secondary flex-1">
+                <Icon name={waCopied ? 'check' : 'copy'} className="w-4 h-4" />
+                {waCopied ? 'Kopyalandı' : 'Mesajı kopyala'}
               </button>
-              <button
-                onClick={sendWaMsg}
-                className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-              >
-                <WaIcon /> Göndər
+              <button onClick={sendWaMsg} className="btn btn-md btn-primary flex-1">
+                <WaIcon className="w-4 h-4" />
+                WhatsApp-da göndər
               </button>
             </div>
           </div>
 
-          {/* ── Save as template ────────────────────────────────────────── */}
-          <div className="border-t border-white/10 pt-4 mt-2">
+          {/* Save as template */}
+          <div className="mt-6 pt-6 border-t border-slate-100">
             {!showSaveTemplate ? (
               <button
                 onClick={() => planFeatures.templates ? setShowSaveTemplate(true) : undefined}
                 disabled={!planFeatures.templates}
-                className={`w-full py-2.5 rounded-xl border border-white/10 font-medium text-sm transition-colors ${
-                  planFeatures.templates
-                    ? 'hover:bg-white/5 text-slate-400 hover:text-slate-300'
-                    : 'opacity-40 cursor-not-allowed text-slate-500'
-                }`}
+                className="btn btn-sm btn-ghost -ml-2"
               >
-                {planFeatures.templates ? '💾 Şablon kimi yadda saxla' : '🔒 Şablon (Growth+)'}
+                <Icon name={planFeatures.templates ? 'save' : 'lock'} className="w-3.5 h-3.5" />
+                {planFeatures.templates ? 'Şablon kimi yadda saxla' : 'Şablonlar Growth planındadır'}
               </button>
             ) : (
-              <div className="space-y-2">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={templateNameInput}
                   onChange={e => setTemplateNameInput(e.target.value)}
                   placeholder="Şablon adı (məs. Antalya 7 gecə)"
-                  className="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className="input"
                   autoFocus
                 />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSaveTemplate}
-                    className="flex-1 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-semibold text-sm transition-colors"
-                  >
-                    {templateSaved ? '✓ Saxlandı!' : 'Saxla'}
-                  </button>
-                  <button
-                    onClick={() => { setShowSaveTemplate(false); setTemplateNameInput(''); }}
-                    className="px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm transition-colors"
-                  >
-                    Ləğv et
-                  </button>
-                </div>
+                <button onClick={handleSaveTemplate} className="btn btn-md btn-dark">
+                  {templateSaved ? 'Saxlandı' : 'Saxla'}
+                </button>
+                <button onClick={() => { setShowSaveTemplate(false); setTemplateNameInput(''); }} className="btn btn-md btn-ghost">
+                  Ləğv
+                </button>
               </div>
             )}
           </div>
 
-          <button
-            onClick={resetForm}
-            className="w-full mt-2 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 font-medium text-sm transition-colors"
-          >
-            + Yeni təklif yarat
-          </button>
+          <div className="mt-6 flex gap-2">
+            <Link href="/dashboard" className="btn btn-md btn-secondary flex-1">Təkliflərə qayıt</Link>
+            <button onClick={resetForm} className="btn btn-md btn-dark flex-1">
+              <Icon name="plus" className="w-4 h-4" strokeWidth={2} />
+              Yeni təklif
+            </button>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -586,105 +551,77 @@ function CreatePageContent() {
   // Main form
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Top bar */}
-      <header className="bg-[#0F172A] border-b border-white/5 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-base">✈️</div>
-        <div className="flex-1">
-          <h1 className="font-bold text-sm leading-tight">TourFlow</h1>
-          <p className="text-slate-500 text-xs">
-            {isAlt ? '↩ Alternativ Büdcəyə Uyğun Təklif' : '30 Saniyəlik Tur Təklifi'}
-          </p>
-        </div>
-        <Link
-          href="/dashboard"
-          className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
-        >
-          📊 Dashboard
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
-        >
-          Çıxış
-        </button>
-      </header>
-
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-5 pb-24">
+    <div>
+      <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5 pb-28 md:pb-12">
+        <PageTitle
+          title={isAlt ? 'Alternativ təklif' : 'Yeni təklif'}
+          subtitle={isAlt ? 'Daha uyğun büdcəli otel variantları əlavə edin' : 'Müştəri, səfər və otel variantlarını doldurun — link avtomatik hazırlanır'}
+          back={{ href: '/dashboard', label: 'Təkliflər' }}
+        />
 
         {/* ── 0. Templates ─────────────────────────────────────────────── */}
         {!planFeatures.templates ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-dashed border-slate-200 p-4 flex items-center gap-3 opacity-70">
-            <span className="text-xl">💾</span>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-slate-500">Tur Şablonları</p>
-              <p className="text-xs text-slate-400">Bu funksiya Growth paketindən aktivdir</p>
-            </div>
-            <span className="text-lg">🔒</span>
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3 flex items-center gap-3">
+            <Icon name="lock" className="w-4 h-4 text-slate-400" />
+            <p className="text-sm text-slate-500">Hazır tur şablonları Growth planından aktivdir.</p>
           </div>
-        ) : templates.length > 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-            <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide mb-3">
-              <span>💾</span> Şablonlar
-            </h2>
+        ) : (
+          <div className="card px-4 py-3.5">
+            <div className="flex items-center gap-2 mb-2.5">
+              <p className="section-title">Şablondan başla</p>
+              <span className="text-xs text-slate-400">— istiqamət, gecə sayı və xidmətlər dolur</span>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {/* Built-in seed templates — not deletable */}
               {SEED_TEMPLATES.map(t => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => applyTemplate(t)}
-                  className="flex items-center gap-1.5 bg-teal-50 border border-teal-100 rounded-xl px-3 py-1.5 text-sm font-semibold text-teal-700 hover:bg-teal-100 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 hover:text-ink transition-colors"
                 >
-                  🌍 {t.name}
+                  <Icon name="globe" className="w-3.5 h-3.5 text-slate-400" />
+                  {t.name}
                 </button>
               ))}
-              {/* User-saved templates */}
               {templates.map(t => (
-                <div key={t.id} className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl pr-1 pl-3 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => applyTemplate(t)}
-                    className="text-sm font-semibold text-slate-700 hover:text-teal-600 transition-colors"
-                  >
+                <span key={t.id} className="inline-flex items-center h-8 rounded-full border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700">
+                  <button type="button" onClick={() => applyTemplate(t)} className="pl-3 pr-1.5 h-full hover:text-ink">
                     {t.name}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteTemplate(t.id)}
                     disabled={deletingTemplId === t.id}
-                    className="ml-1 text-xs text-slate-300 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded transition-colors"
+                    aria-label="Şablonu sil"
+                    className="pr-2 pl-0.5 h-full text-slate-400 hover:text-red-600"
                   >
-                    ✕
+                    <Icon name="x" className="w-3 h-3" />
                   </button>
-                </div>
+                </span>
               ))}
             </div>
-            <p className="text-xs text-slate-400 mt-2">
-              Şablona basın → istiqamət, gecə sayı və xidmətlər avtomatik dolur
-            </p>
           </div>
-        ) : null}
+        )}
 
         {/* Alternative offer notice */}
         {isAlt && duplicateId && (
           planFeatures.alternativeOffer ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-              <span className="text-amber-500 text-lg flex-shrink-0">↩</span>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-start gap-3">
+              <Icon name="repeat" className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-amber-800">Alternativ / Büdcəyə Uyğun Təklif</p>
-                <p className="text-xs text-amber-700 mt-0.5">
+                <p className="text-sm font-medium text-ink">Əvvəlki təklifə alternativ</p>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Əvvəlki təklif ilə əlaqəli yeni otel variantları əlavə edin.
                   Müştəri məlumatları artıq dolduruldu.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-              <span className="text-2xl flex-shrink-0">🔒</span>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-start gap-3">
+              <Icon name="lock" className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-bold text-amber-800">Alternativ Təklif — Growth Paketi Lazımdır</p>
-                <p className="text-xs text-amber-700 mt-0.5">
+                <p className="text-sm font-medium text-ink">Alternativ təklif Growth planındadır</p>
+                <p className="text-xs text-slate-500 mt-0.5">
                   1-kliklə alternativ təklif yaratma Growth paketindən aktivdir.
                 </p>
                 {SUPPORT_WA && (
@@ -692,9 +629,9 @@ function CreatePageContent() {
                     href={`https://wa.me/${SUPPORT_WA.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow Growth paketinə keçmək istəyirəm.')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block mt-2 text-xs font-bold text-amber-700 underline"
+                    className="inline-block mt-2 text-xs font-medium text-brand-700 hover:underline"
                   >
-                    Growth paketinə keç →
+                    Growth planına keç
                   </a>
                 )}
               </div>
@@ -703,14 +640,14 @@ function CreatePageContent() {
         )}
 
         {/* ── 1. Agency / Manager ─────────────────────────────────────── */}
-        <Section title="Agentlik / Menecer məlumatları" emoji="🏢">
+        <Section title="Agentlik və menecer" icon="building" description="Müştərinin görəcəyi əlaqə məlumatları">
           {!profileLoaded && (
-            <p className="text-xs text-slate-400 flex items-center gap-1.5">
-              <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-xs text-slate-500 flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-ink rounded-full animate-spin" />
               Profil yüklənir...
             </p>
           )}
-          <Field label="Agentliyin adı (opsional)">
+          <Field label="Agentliyin adı">
             <input
               type="text"
               value={agencyName}
@@ -719,7 +656,7 @@ function CreatePageContent() {
               className={inputCls}
             />
           </Field>
-          <Field label="Agentlik loqosu URL-i (opsional)">
+          <Field label="Loqo linki (istəyə görə)">
             <input
               type="url"
               value={agencyLogo}
@@ -738,7 +675,7 @@ function CreatePageContent() {
                 className={inputCls}
               />
             </Field>
-            <Field label="WhatsApp nömrəsi *">
+            <Field label="Menecerin WhatsApp nömrəsi" required>
               <input
                 type="tel"
                 required
@@ -752,9 +689,9 @@ function CreatePageContent() {
         </Section>
 
         {/* ── 2. Client / Trip details ─────────────────────────────────── */}
-        <Section title="Müştəri və Tur məlumatları" emoji="🧳">
+        <Section title="Müştəri və səfər" icon="briefcase">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Müştərinin adı *">
+            <Field label="Müştərinin adı" required>
               <ClientCombobox
                 value={clientName}
                 selectedId={selectedClientId}
@@ -770,7 +707,7 @@ function CreatePageContent() {
                 inputClassName={inputCls}
               />
             </Field>
-            <Field label="İstiqamət / Ölkə *">
+            <Field label="İstiqamət" required>
               <input
                 type="text"
                 required
@@ -811,10 +748,10 @@ function CreatePageContent() {
                 readOnly={!!(startDate && endDate)}
                 onChange={e => { if (!(startDate && endDate)) setNights(e.target.value); }}
                 placeholder="7"
-                className={`${inputCls} ${startDate && endDate ? 'bg-slate-100 cursor-default text-slate-500' : ''}`}
+                className={`${inputCls} ${startDate && endDate ? 'bg-slate-50 cursor-default text-slate-500' : ''}`}
               />
             </Field>
-            <Field label="Bitmə müddəti">
+            <Field label="Təklif etibarlıdır">
               <select
                 value={expiryDays}
                 onChange={e => setExpiryDays(e.target.value)}
@@ -828,7 +765,7 @@ function CreatePageContent() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Field label="Böyüklər">
               <input
                 type="number"
@@ -849,7 +786,7 @@ function CreatePageContent() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Müştərinin WA (opsional)">
+            <Field label="Müştərinin WhatsApp-ı">
               <input
                 type="tel"
                 value={clientPhone}
@@ -862,9 +799,10 @@ function CreatePageContent() {
 
           {/* Duplicate phone notice */}
           {dupClient && !selectedClientId && (
-            <div className="bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
-              <p className="text-xs text-amber-800">
-                ⚠️ Bu nömrə artıq <strong>{dupClient.name}</strong> kartında var. Təklif bu karta bağlanacaq.
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-ink flex items-start gap-1.5">
+                <Icon name="info" className="w-4 h-4 text-brand-600 flex-shrink-0" />
+                <span>Bu nömrə artıq <strong className="font-medium">{dupClient.name}</strong> kartında var. Təklif bu karta bağlanacaq.</span>
               </p>
               <div className="flex gap-2 flex-shrink-0">
                 <button
@@ -874,7 +812,7 @@ function CreatePageContent() {
                     setSelectedClientId(dupClient.id);
                     setDupClient(null);
                   }}
-                  className="text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-2.5 py-1"
+                  className="btn btn-sm btn-primary"
                 >
                   Bu kartı istifadə et
                 </button>
@@ -882,7 +820,7 @@ function CreatePageContent() {
                   href={`/dashboard/clients/${dupClient.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-semibold text-teal-700 hover:underline self-center"
+                  className="text-xs font-semibold text-brand-700 hover:underline self-center"
                 >
                   Kartı aç
                 </a>
@@ -892,22 +830,22 @@ function CreatePageContent() {
 
           {/* Includes checkboxes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              Qiymətə daxildir
-            </label>
+            <label className="label">Qiymətə daxildir</label>
             <div className="flex flex-wrap gap-2">
-              {INCLUDES_META.map(({ key, label, emoji }) => (
+              {INCLUDES_META.map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => toggleInclude(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                  aria-pressed={includes.includes(key)}
+                  className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm border transition-colors ${
                     includes.includes(key)
-                      ? 'bg-teal-600 border-teal-600 text-white'
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300'
+                      ? 'bg-ink border-ink text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
                 >
-                  <span>{emoji}</span> {label}
+                  <Icon name={INCLUDE_ICON[key] ?? 'check'} className="w-4 h-4" />
+                  {label}
                 </button>
               ))}
             </div>
@@ -917,10 +855,11 @@ function CreatePageContent() {
         {/* ── 3. Hotel blocks ──────────────────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
-              <span>🏨</span> {isAlt ? 'Büdcəyə uyğun otel variantları' : 'Otel variantları'}
+            <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+              <Icon name="bed" className="w-4 h-4 text-slate-400" />
+              {isAlt ? 'Büdcəyə uyğun otel variantları' : 'Otel variantları'}
             </h2>
-            <span className="text-xs text-slate-400">{hotels.length}/5</span>
+            <span className="text-xs text-slate-500">{hotels.length} / 5</span>
           </div>
 
           {hotels.map((hotel, i) => (
@@ -937,17 +876,19 @@ function CreatePageContent() {
             <button
               type="button"
               onClick={addHotel}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 text-slate-500 hover:text-blue-700 font-medium text-sm transition-colors"
+              className="w-full h-11 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-600 hover:text-ink text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5"
             >
-              + Otel əlavə et
+              <Icon name="plus" className="w-4 h-4" />
+              Otel variantı əlavə et
             </button>
           )}
         </div>
 
         {/* ── Error ──────────────────────────────────────────────────── */}
         {submitErr && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
-            ⚠️ {submitErr}
+          <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm flex items-start gap-2">
+            <Icon name="alert" className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            {submitErr}
           </div>
         )}
 
@@ -955,32 +896,32 @@ function CreatePageContent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-4 rounded-2xl bg-[#0F172A] border border-teal-500/50 hover:border-teal-400 disabled:opacity-60 text-white text-base font-bold shadow-lg transition-all active:scale-[.98]"
+          className="btn btn-lg btn-primary w-full hidden md:inline-flex"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Hazırlanır...
+              Hazırlanır…
             </span>
           ) : (
-            isAlt ? '↩ Alternativ Linkini Yarat' : '⚡ Təklif Linkini Yarat'
+            isAlt ? 'Alternativ təklifi yarat' : 'Təklif linkini yarat'
           )}
         </button>
       </form>
 
       {/* Sticky bottom submit bar — hidden when mobile keyboard is open */}
       {!keyboardOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-[#0F172A]/95 backdrop-blur-sm border-t border-white/5 px-4 py-3 safe-area-pb md:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 safe-area-pb md:hidden">
           <button
             form="create-form"
             type="submit"
             disabled={loading}
             onClick={() => { const f = document.querySelector('form'); f?.requestSubmit(); }}
-            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white text-sm font-bold shadow-lg transition-all active:scale-[.98]"
+            className="btn btn-lg btn-primary w-full"
           >
             {loading
-              ? '⏳ Hazırlanır...'
-              : isAlt ? '↩ Alternativ Linkini Yarat' : '⚡ Təklif Linkini Yarat'}
+              ? 'Hazırlanır…'
+              : isAlt ? 'Alternativ təklifi yarat' : 'Təklif linkini yarat'}
           </button>
         </div>
       )}
@@ -991,33 +932,35 @@ function CreatePageContent() {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Section({
-  title, emoji, children,
+  title, icon, description, children,
 }: {
-  title: string; emoji: string; children: React.ReactNode;
+  title: string; icon: IconName; description?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4">
-      <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
-        <span>{emoji}</span> {title}
-      </h2>
-      {children}
-    </div>
+    <section className="card">
+      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <Icon name={icon} className="w-4 h-4 text-slate-400" />
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {description && <span className="text-xs text-slate-500 hidden sm:inline">— {description}</span>}
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </section>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+      <label className="label">
         {label}
+        {required && <span className="text-slate-400"> *</span>}
       </label>
       {children}
     </div>
   );
 }
 
-const inputCls =
-  'w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition';
+const inputCls = 'input';
 
 interface HotelBlockProps {
   index:    number;
@@ -1066,16 +1009,20 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+    <div className="card p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-slate-700 text-sm">Variant {index + 1}</span>
+        <span className="text-sm font-semibold text-ink flex items-center gap-2">
+          <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center">{index + 1}</span>
+          Variant {index + 1}
+        </span>
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+            className="btn btn-sm btn-ghost hover:text-red-600 hover:bg-red-50"
           >
-            Sil ✕
+            <Icon name="trash" className="w-3.5 h-3.5" />
+            Sil
           </button>
         )}
       </div>
@@ -1083,7 +1030,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
       {/* Name & Stars */}
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-2">
-          <Field label="Otelin adı *">
+          <Field label="Otelin adı" required>
             <HotelCombobox
               value={hotel.name}
               selectedId={hotel.catalogHotelId}
@@ -1109,9 +1056,9 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
             onChange={e => onChange({ stars: parseInt(e.target.value) })}
             className={inputCls}
           >
-            <option value={3}>3 ★</option>
-            <option value={4}>4 ★</option>
-            <option value={5}>5 ★</option>
+            <option value={3}>3 ulduz</option>
+            <option value={4}>4 ulduz</option>
+            <option value={5}>5 ulduz</option>
           </select>
         </Field>
       </div>
@@ -1140,26 +1087,26 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
 
       {/* Meal type — quick chips */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-          Qidalanma tipi
-        </label>
+        <label className="label">Qidalanma</label>
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(MEAL_LABELS) as MealType[]).map(k => (
             <button
               key={k}
               type="button"
               onClick={() => onChange({ mealType: k })}
-              className={`min-h-[44px] px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
+              aria-pressed={hotel.mealType === k}
+              title={MEAL_LABELS[k]}
+              className={`min-h-[40px] min-w-[52px] px-3 rounded-lg text-sm font-medium border transition-colors ${
                 hotel.mealType === k
-                  ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+                  ? 'bg-ink border-ink text-white'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-ink'
               }`}
             >
               {k}
             </button>
           ))}
         </div>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-500 mt-1.5">
           {MEAL_LABELS[hotel.mealType as MealType] ?? hotel.mealType}
         </p>
       </div>
@@ -1167,7 +1114,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
       {/* Price, Currency & Price type */}
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-1">
-          <Field label="Qiymət *">
+          <Field label="Qiymət" required>
             <input
               type="number"
               required
@@ -1216,25 +1163,25 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
               priceType: lastPrice.priceType as 'per_person' | 'total',
               ...(lastPrice.mealType ? { mealType: lastPrice.mealType } : {}),
             })}
-            className={`w-full text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+            className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors flex items-center gap-2 ${
               isOld
-                ? 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
-                : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
+                ? 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                : 'border-brand-200 bg-brand-50 text-brand-800 hover:bg-brand-100'
             }`}
           >
-            💡 Son qiymət: <strong>{lastPrice.price} {lastPrice.currency}</strong>
+            <Icon name="clock" className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Son təklifdəki qiymət: <strong className="font-medium">{lastPrice.price} {lastPrice.currency}</strong>
             {lastPrice.priceType === 'per_person' ? ' / nəfər' : ' ümumi'}
             {lastPrice.mealType ? ` · ${lastPrice.mealType}` : ''}
-            <span className="ml-1 text-slate-400">({daysAgo} gün əvvəl{isOld ? ' — köhnəlib' : ''})</span>
+            <span className="ml-1 text-slate-400">({daysAgo} gün əvvəl{isOld ? ' — köhnə ola bilər' : ''})</span></span>
+            <span className="ml-auto text-[11px] font-medium">Doldur</span>
           </button>
         );
       })()}
 
       {/* Image section */}
       <div className="space-y-2">
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-          Otel şəkli
-        </label>
+        <label className="label mb-0">Otel şəkli</label>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {PRESET_IMAGES.map(preset => (
             <button
@@ -1244,7 +1191,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
               title={preset.label}
               className={`flex-shrink-0 w-16 h-11 rounded-lg overflow-hidden border-2 transition-all ${
                 hotel.imageUrl === preset.url
-                  ? 'border-blue-500 ring-2 ring-blue-300'
+                  ? 'border-ink ring-2 ring-slate-300'
                   : 'border-transparent hover:border-slate-300'
               }`}
             >
@@ -1258,9 +1205,9 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex-shrink-0">
-            <span>📁</span>
-            {uploading ? 'Yüklənir...' : 'Fayl seç'}
+          <label className="btn btn-sm btn-secondary cursor-pointer">
+            <Icon name="upload" className="w-3.5 h-3.5" />
+            {uploading ? 'Yüklənir…' : 'Şəkil yüklə'}
             <input
               type="file"
               accept="image/*"
@@ -1269,7 +1216,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
               onChange={handleFileUpload}
             />
           </label>
-          <span className="text-xs text-slate-400">maks. 5 MB</span>
+          <span className="text-xs text-slate-500">və ya yuxarıdan təsviri şəkil seçin · maks. 5 MB</span>
         </div>
         <input
           type="url"
@@ -1286,7 +1233,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
               type="checkbox"
               checked={hotel.sharePhoto}
               onChange={e => onChange({ sharePhoto: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-teal-500"
+              className="w-3.5 h-3.5 rounded accent-brand-600"
             />
             <span className="text-xs text-slate-500">
               Bu şəkli digər agentliklərlə paylaş (kataloqa əlavə et)
@@ -1296,7 +1243,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
       </div>
 
       {/* Note */}
-      <Field label="Qısa özəllik / Qeyd">
+      <Field label="Qısa qeyd">
         <input
           type="text"
           value={hotel.note}
@@ -1306,13 +1253,5 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
         />
       </Field>
     </div>
-  );
-}
-
-function WaIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-    </svg>
   );
 }

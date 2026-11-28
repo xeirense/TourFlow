@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             body: `
               <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
               <strong>${hotelName ?? 'bir oteli'}</strong> seçib WhatsApp-a keçdi.</p>
-              <p style="font-size:18px;font-weight:700;color:#0d9488;margin:12px 0">
+              <p style="font-size:18px;font-weight:700;color:#2F54D1;margin:12px 0">
                 Bu isti bir potensial müştəridir! 🔥
               </p>
               <p style="color:#64748b;font-size:13px">Mümkün qədər tez cavab verin.</p>

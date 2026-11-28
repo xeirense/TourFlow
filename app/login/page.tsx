@@ -39,28 +39,27 @@ export default function LoginPage() {
   }
 
   if (success) {
-    return <LoadingOverlay message="Panel açılır..." />;
+    return <LoadingOverlay message="Panel açılır…" />;
   }
 
-  const inputCls =
-    'w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition';
+  const inputCls = 'input h-11';
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center p-4">
-      <div className="bg-[#111827] border border-white/5 rounded-3xl shadow-2xl p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="card p-8 w-full max-w-sm">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-xl font-black text-white tracking-tighter">TF</span>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-ink">
+            <span className="text-base font-bold text-white tracking-wide">TF</span>
           </div>
-          <h1 className="text-xl font-extrabold text-white mt-4">TourFlow</h1>
-          <p className="text-slate-400 text-sm mt-1">Agentlik panelinə giriş</p>
+          <h1 className="text-xl font-semibold text-ink mt-4">TourFlow</h1>
+          <p className="text-slate-500 text-sm mt-1">Agentlik panelinə giriş</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="label">
               Email
             </label>
             <input
@@ -73,7 +72,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="label">
               Şifrə
             </label>
             <input
@@ -87,7 +86,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl px-4 py-3 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
               {error}
             </div>
           )}
@@ -95,28 +94,28 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold text-sm transition-all active:scale-[.98]"
+            className="btn btn-lg btn-primary w-full"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Yoxlanılır...
+                <span className="inline-block w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                Yoxlanılır…
               </span>
             ) : (
-              'Daxil ol →'
+              'Daxil ol'
             )}
           </button>
         </form>
 
         <div className="mt-6 space-y-2 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Hesabınız yoxdur?{' '}
-            <Link href="/register" className="text-teal-400 font-semibold hover:underline">
+            <Link href="/register" className="text-brand-700 font-medium hover:underline">
               Qeydiyyatdan keçin
             </Link>
           </p>
           <p className="text-sm">
-            <Link href="/forgot-password" className="text-slate-500 hover:text-slate-300 transition-colors">
+            <Link href="/forgot-password" className="text-slate-500 hover:text-ink transition-colors">
               Şifrəni unutmusunuz?
             </Link>
           </p>

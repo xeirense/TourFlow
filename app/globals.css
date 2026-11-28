@@ -7,11 +7,58 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-ink antialiased;
+    font-feature-settings: 'cv11', 'ss01';
   }
   input[type='date']::-webkit-inner-spin-button,
   input[type='date']::-webkit-calendar-picker-indicator {
     opacity: 0.5;
+  }
+  ::selection {
+    @apply bg-brand-100 text-ink;
+  }
+}
+
+/* ── Shared UI primitives ──────────────────────────────────────────────────── */
+@layer components {
+  .card {
+    @apply bg-white border border-slate-200 rounded-xl shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium
+           transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1;
+  }
+  .btn-sm  { @apply h-8 px-3 text-xs; }
+  .btn-md  { @apply h-10 px-4; }
+  .btn-lg  { @apply h-12 px-5 text-[15px]; }
+
+  .btn-primary   { @apply bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-dark      { @apply bg-ink text-white hover:bg-ink-soft; }
+  .btn-secondary { @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300; }
+  .btn-ghost     { @apply text-slate-600 hover:text-ink hover:bg-slate-100; }
+  .btn-danger    { @apply bg-white text-red-600 border border-red-200 hover:bg-red-50; }
+
+  .input {
+    @apply w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-ink
+           placeholder:text-slate-400 transition-colors
+           focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+  .label {
+    @apply block text-xs font-medium text-slate-600 mb-1.5;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium;
+  }
+  .pill-neutral { @apply border-slate-200 bg-slate-50 text-slate-600; }
+  .pill-brand   { @apply border-brand-200 bg-brand-50 text-brand-700; }
+  .pill-strong  { @apply border-ink bg-ink text-white; }
+  .pill-danger  { @apply border-red-200 bg-red-50 text-red-600; }
+
+  .section-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
   }
 }
 
@@ -21,6 +68,6 @@
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
   /* star rating color */
-  .star-active { color: #f59e0b; }
-  .star-empty  { color: #d1d5db; }
+  .star-active { color: #334155; }
+  .star-empty  { color: #CBD5E1; }
 }

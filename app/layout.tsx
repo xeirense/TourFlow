@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'TourFlow – 30 Saniyəlik Tur Təklifi',
+  title: { default: 'TourFlow', template: '%s — TourFlow' },
   description: 'Turizm agentlikləri üçün sürətli, peşəkar tur təklifi yaratma sistemi',
   icons: { icon: '/favicon.svg' },
 };

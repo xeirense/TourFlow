@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Icon from '@/app/components/Icon';
 
-export default function DeleteOfferButton({ offerId }: { offerId: string }) {
+export default function DeleteOfferButton({ offerId, variant = 'button' }: { offerId: string; variant?: 'button' | 'menu' }) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading]       = useState(false);
   const router = useRouter();
@@ -12,9 +13,7 @@ export default function DeleteOfferButton({ offerId }: { offerId: string }) {
     setLoading(true);
     try {
       const res = await fetch(`/api/offers/${offerId}`, { method: 'DELETE' });
-      if (res.ok) {
-        router.refresh(); // server component re-renders with fresh data
-      }
+      if (res.ok) router.refresh();
     } finally {
       setLoading(false);
       setConfirming(false);
@@ -23,30 +22,34 @@ export default function DeleteOfferButton({ offerId }: { offerId: string }) {
 
   if (confirming) {
     return (
-      <div className="flex items-center gap-1.5">
-        <button
-          onClick={handleDelete}
-          disabled={loading}
-          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors disabled:opacity-60"
-        >
-          {loading ? '...' : 'Sil'}
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
+        <span className="text-xs text-slate-500 mr-1">Silinsin?</span>
+        <button onClick={handleDelete} disabled={loading} className="btn btn-sm bg-red-600 text-white hover:bg-red-700">
+          {loading ? '…' : 'Bəli, sil'}
         </button>
-        <button
-          onClick={() => setConfirming(false)}
-          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium transition-colors"
-        >
+        <button onClick={() => setConfirming(false)} className="btn btn-sm btn-ghost">
           Ləğv
         </button>
       </div>
     );
   }
 
+  if (variant === 'menu') {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+      >
+        <Icon name="trash" className="w-4 h-4" />
+        Sil
+      </button>
+    );
+  }
+
   return (
-    <button
-      onClick={() => setConfirming(true)}
-      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-500 text-xs font-semibold transition-colors"
-    >
-      🗑 Sil
+    <button onClick={() => setConfirming(true)} className="btn btn-sm btn-danger">
+      <Icon name="trash" className="w-3.5 h-3.5" />
+      Sil
     </button>
   );
 }

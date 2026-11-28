@@ -69,13 +69,13 @@ export default function ClientCombobox({
           autoComplete="off"
         />
         {loading && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-block w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-block w-3.5 h-3.5 border-2 border-slate-300 border-t-ink rounded-full animate-spin" />
         )}
         {selectedId && (
           <button
             type="button"
             onClick={onClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-sm"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink text-sm"
             title="Seçimi təmizlə"
           >
             ✕
@@ -84,24 +84,24 @@ export default function ClientCombobox({
       </div>
 
       {selectedId && (
-        <p className="text-xs text-teal-400 mt-1">✓ Mövcud müştəri seçildi — məlumatlar dolduruldu</p>
+        <p className="text-xs text-brand-700 mt-1.5">Mövcud müştəri seçildi — məlumatlar dolduruldu</p>
       )}
 
       {open && !selectedId && results.length > 0 && (
-        <ul className="absolute z-30 w-full mt-1 bg-[#1E293B] border border-white/10 rounded-xl shadow-xl overflow-hidden">
+        <ul className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
           {results.map(c => (
             <li key={c.id}>
               <button
                 type="button"
-                className="w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors"
+                className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
                 onMouseDown={e => {
                   e.preventDefault();
                   onSelect(c);
                   setOpen(false);
                 }}
               >
-                <p className="text-sm text-white font-medium">{c.full_name}</p>
-                {c.phone && <p className="text-xs text-slate-400">{c.phone}</p>}
+                <p className="text-sm text-ink font-medium">{c.full_name}</p>
+                {c.phone && <p className="text-xs text-slate-500">{c.phone}</p>}
                 {c.preferred_destinations.length > 0 && (
                   <p className="text-xs text-slate-500">{c.preferred_destinations.slice(0, 2).join(', ')}</p>
                 )}
