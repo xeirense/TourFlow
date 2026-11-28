@@ -70,18 +70,18 @@ export default function AppHeader(props: AppHeaderProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative h-14 flex items-center gap-1.5 px-3 text-sm whitespace-nowrap transition-colors ${
+                  className={`relative h-14 flex items-center gap-1.5 px-2.5 text-sm whitespace-nowrap transition-colors ${
                     active ? 'text-ink font-medium' : 'text-slate-500 hover:text-ink'
                   }`}
                 >
-                  <Icon name={item.icon} className="w-4 h-4" />
+                  <Icon name={item.icon} className="w-4 h-4 hidden 2xl:block" />
                   {item.label}
                   {item.href === '/dashboard/team' && props.teamCount > 0 && (
                     <span className="ml-0.5 text-[10px] font-semibold text-slate-500 bg-slate-100 rounded-full px-1.5 py-px">
                       {props.teamCount}
                     </span>
                   )}
-                  {active && <span className="absolute left-3 right-3 bottom-0 h-0.5 bg-brand-600 rounded-full" />}
+                  {active && <span className="absolute left-2.5 right-2.5 bottom-0 h-0.5 bg-brand-600 rounded-full" />}
                 </Link>
               );
             })}
