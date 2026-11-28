@@ -123,7 +123,7 @@ const templates = {
     intro:   'TourFlow-a qoşulduğunuz üçün təşəkkür edirik. E-poçt ünvanınızı təsdiqləyin — 14 günlük pulsuz sınaq dərhal başlayacaq.',
     button:  'E-poçtu təsdiqlə',
     href:    `${SITE}/auth/confirm?token_hash={{ .TokenHash }}&type=email`,
-    facts:   [['Hesab', '{{ .Email }}'], ['Pulsuz sınaq', '14 gün'], ['Kredit kartı', 'Tələb olunmur']],
+    facts:   [['Hesab', '{{ .Email }}'], ['Pulsuz sınaq', '14 gün']],
     note:    'Bu qeydiyyatı siz etməmisinizsə, məktubu nəzərə almayın.',
   },
 };

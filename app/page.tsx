@@ -93,7 +93,7 @@ export default async function LandingPage() {
               </Link>
               <a href="#qiymetler" className="btn btn-lg btn-secondary">Qiymətlərə bax</a>
             </div>
-            <p className="mt-4 text-xs text-slate-500">Kredit kartı tələb olunmur · İstənilən vaxt dayandırın</p>
+            <p className="mt-4 text-xs text-slate-500">14 gün pulsuz · İllik öhdəlik yoxdur · İstənilən vaxt dayandırın</p>
           </div>
 
           {/* Product preview */}
