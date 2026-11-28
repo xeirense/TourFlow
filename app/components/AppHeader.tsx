@@ -44,26 +44,26 @@ export default function AppHeader(props: AppHeaderProps) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Top row */}
         <div className="h-14 flex items-center gap-3">
-          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
+          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
             <span className="w-8 h-8 rounded-lg bg-ink text-white flex items-center justify-center text-[11px] font-bold tracking-wide flex-shrink-0">
               TF
             </span>
-            <span className="hidden sm:block font-semibold text-ink text-sm">TourFlow</span>
-            <span className="hidden sm:block w-px h-5 bg-slate-200" />
-            <span className="text-sm text-slate-600 truncate max-w-[140px] sm:max-w-[220px]">
+            <span className="hidden sm:block lg:hidden 2xl:block font-semibold text-ink text-sm">TourFlow</span>
+            <span className="hidden sm:block lg:hidden 2xl:block w-px h-5 bg-slate-200" />
+            <span className="text-sm font-medium text-slate-700 truncate max-w-[140px] sm:max-w-[200px]">
               {props.agencyName}
             </span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1 ml-4 h-14">
+          <nav className="hidden lg:flex items-center ml-2 h-14">
             {nav.map(item => {
               const active = isActive(item.href, item.exact);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative h-14 flex items-center gap-1.5 px-3 text-sm transition-colors ${
+                  className={`relative h-14 flex items-center gap-1.5 px-3 text-sm whitespace-nowrap transition-colors ${
                     active ? 'text-ink font-medium' : 'text-slate-500 hover:text-ink'
                   }`}
                 >
@@ -86,7 +86,7 @@ export default function AppHeader(props: AppHeaderProps) {
           <Link
             href="/dashboard/settings"
             title="Plan və istifadə"
-            className={`hidden sm:inline-flex items-center gap-1.5 text-xs rounded-full border px-2.5 py-1 transition-colors ${
+            className={`hidden sm:inline-flex items-center gap-1.5 text-xs rounded-full border px-2.5 py-1 whitespace-nowrap transition-colors ${
               props.planUrgent
                 ? 'border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100'
                 : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -94,10 +94,10 @@ export default function AppHeader(props: AppHeaderProps) {
           >
             <span className="font-semibold">{props.planLabel}</span>
             {props.planNote && (
-              <>
+              <span className="hidden xl:inline-flex items-center gap-1.5">
                 <span className="text-slate-300">·</span>
                 <span>{props.planNote}</span>
-              </>
+              </span>
             )}
           </Link>
 
