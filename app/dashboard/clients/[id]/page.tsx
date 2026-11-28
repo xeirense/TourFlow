@@ -71,6 +71,7 @@ export default function ClientProfilePage() {
   const [prefBudgetMin,  setPrefBudgetMin]  = useState('');
   const [prefBudgetMax,  setPrefBudgetMax]  = useState('');
   const [prefTags,       setPrefTags]       = useState('');
+  const [prefSource,     setPrefSource]     = useState<TFClient['source']>('whatsapp');
   const [savingPrefs,    setSavingPrefs]    = useState(false);
 
   const load = useCallback(async () => {
@@ -131,6 +132,7 @@ export default function ClientProfilePage() {
       setPrefBudgetMin(c.budget_min ?? '');
       setPrefBudgetMax(c.budget_max ?? '');
       setPrefTags((c.tags ?? []).join(', '));
+      setPrefSource(c.source ?? 'whatsapp');
     } catch {
       setError('Yüklənə bilmədi');
     } finally {
@@ -185,6 +187,7 @@ export default function ClientProfilePage() {
         budgetMin:             prefBudgetMin ? parseFloat(prefBudgetMin) : null,
         budgetMax:             prefBudgetMax ? parseFloat(prefBudgetMax) : null,
         tags:                  prefTags.split(',').map(s => s.trim()).filter(Boolean),
+        source:                prefSource,
       }),
     });
     setSavingPrefs(false);
@@ -281,7 +284,7 @@ export default function ClientProfilePage() {
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-slate-100 text-xs">
                 <div>
-                  <dt className="text-slate-500">Mənbə</dt>
+                  <dt className="text-slate-500">Müraciət kanalı</dt>
                   <dd className="text-ink mt-0.5">{SOURCE_LABELS[client.source]}</dd>
                 </div>
                 <div>
@@ -531,6 +534,15 @@ export default function ClientProfilePage() {
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 border border-slate-200 shadow-2xl my-4">
             <h2 className="font-semibold text-ink">Üstünlükləri redaktə et</h2>
+            <div>
+              <label className="label">Müraciət kanalı</label>
+              <select value={prefSource} onChange={e => setPrefSource(e.target.value as TFClient['source'])} className={inputCls}>
+                {(Object.keys(SOURCE_LABELS) as TFClient['source'][]).map(k => (
+                  <option key={k} value={k}>{SOURCE_LABELS[k]}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1.5">Müştəri agentliyə hansı yolla müraciət edib</p>
+            </div>
             <div>
               <label className="label">Qeyd</label>
               <textarea value={prefNotes} onChange={e => setPrefNotes(e.target.value)} rows={3} className={`${inputCls} h-auto py-2.5 resize-none`} />

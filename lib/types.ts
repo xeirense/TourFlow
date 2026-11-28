@@ -109,9 +109,9 @@ export type ActivityType = 'offer_sent' | 'viewed' | 'responded' | 'selected' | 
 export const SOURCE_LABELS: Record<ClientSource, string> = {
   whatsapp:  'WhatsApp',
   instagram: 'Instagram',
-  referral:  'Tövsiyə',
-  'walk-in': 'Şəxsən',
-  other:     'Digər',
+  referral:  'Tövsiyə ilə',
+  'walk-in': 'Ofisə gəlib',
+  other:     'Digər kanal',
 };
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {

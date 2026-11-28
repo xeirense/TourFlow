@@ -5,8 +5,11 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
   const supabase = createSupabaseMiddlewareClient(request, response);
 
-  // Always call getUser() to refresh the JWT cookie
-  const { data: { user } } = await supabase.auth.getUser();
+  // getClaims() refreshes an expired session (rewriting the cookie) and
+  // verifies the JWT signature — locally when the project uses asymmetric
+  // signing keys, so most page loads skip a round trip to the Auth server.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const { pathname } = request.nextUrl;
 

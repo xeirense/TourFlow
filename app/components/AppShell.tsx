@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuth } from '@/lib/auth';
 import {
   PLANS,
   getEffectivePlan,
@@ -16,8 +16,7 @@ interface ProfileRow extends ProfilePlanData {
 
 /** Shared chrome for every signed-in page: header + page background. */
 export default async function AppShell({ children }: { children: React.ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuth();
   if (!user) redirect('/login');
 
   const [profileRes, teamRes] = await Promise.all([

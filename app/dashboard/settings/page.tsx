@@ -274,7 +274,7 @@ export default function SettingsPage() {
         </SettingsRow>
 
         {/* ── Password ─────────────────────────────────────────────────────── */}
-        <SettingsRow title="Şifrə" description="Hesabınıza giriş şifrəsini dəyişin.">
+        <SettingsRow title="Şifrə və təhlükəsizlik" description="Şifrəni dəyişmək üçün hesabın e-poçtuna təsdiq linki göndərilir.">
           <ChangePasswordSection />
         </SettingsRow>
       </div>
@@ -498,64 +498,71 @@ function NotificationSettingsSection() {
 }
 
 // ─── Password ─────────────────────────────────────────────────────────────────
-function ChangePasswordSection() {
-  const [newPassword,     setNewPassword]     = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading,         setLoading]         = useState(false);
-  const [success,         setSuccess]         = useState(false);
-  const [error,           setError]           = useState('');
+// The password is never changed inline: a confirmation link goes to the
+// account's own e-mail, so only the person with access to that inbox can set
+// a new password (an open/unattended session is not enough).
+function maskEmail(email: string): string {
+  const [name, domain] = email.split('@');
+  if (!domain) return email;
+  const visible = name.slice(0, 2);
+  return `${visible}${'•'.repeat(Math.max(2, name.length - 2))}@${domain}`;
+}
 
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault();
+function ChangePasswordSection() {
+  const [email,   setEmail]   = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState('');
+
+  useEffect(() => {
+    createSupabaseBrowserClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+  }, []);
+
+  async function sendLink() {
+    if (!email) return;
+    setSending(true);
     setError('');
-    if (newPassword.length < 6) {
-      setError('Şifrə ən azı 6 simvol olmalıdır');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir');
-      return;
-    }
-    setLoading(true);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
-      if (authError) {
-        setError(authError.message);
-      } else {
-        setSuccess(true);
-        setNewPassword('');
-        setConfirmPassword('');
-        setTimeout(() => setSuccess(false), 3000);
-      }
+      const res = await fetch('/api/auth/forgot-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error();
+      setSent(true);
     } catch {
-      setError('Xəta baş verdi. Yenidən cəhd edin.');
+      setError('Link göndərilmədi. Bir az sonra yenidən cəhd edin.');
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   }
 
   return (
-    <form onSubmit={handleChangePassword} className="space-y-4">
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label className="label">Yeni şifrə</label>
-          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-            placeholder="Ən azı 6 simvol" className="input" autoComplete="new-password" />
-        </div>
-        <div>
-          <label className="label">Təkrar</label>
-          <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-            placeholder="Yenidən daxil edin" className="input" autoComplete="new-password" />
+    <div className="space-y-4">
+      <div className="rounded-lg border border-slate-200 p-4 flex items-start gap-3">
+        <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+          <Icon name="lock" className="w-4 h-4" />
+        </span>
+        <div className="text-sm">
+          <p className="text-ink">Şifrə yalnız e-poçt təsdiqi ilə dəyişdirilir</p>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Təsdiq linki {email ? <span className="font-medium text-slate-700">{maskEmail(email)}</span> : 'hesabınızın e-poçtuna'} ünvanına göndəriləcək.
+            Linki açıb yeni şifrəni təyin edin. Link 1 saat etibarlıdır.
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={loading} className="btn btn-md btn-dark">
-          {loading ? 'Yenilənir…' : 'Şifrəni yenilə'}
-        </button>
-        {error && <Notice kind="error">{error}</Notice>}
-        {success && <Notice kind="success">Şifrə dəyişdirildi</Notice>}
-      </div>
-    </form>
+
+      {sent ? (
+        <Notice kind="success">Link göndərildi — e-poçtunuzu yoxlayın (Spam qovluğunu da)</Notice>
+      ) : (
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={sendLink} disabled={sending || !email} className="btn btn-md btn-dark">
+            <Icon name="mail" className="w-4 h-4" />
+            {sending ? 'Göndərilir…' : 'Təsdiq linki göndər'}
+          </button>
+          {error && <Notice kind="error">{error}</Notice>}
+        </div>
+      )}
+    </div>
   );
 }

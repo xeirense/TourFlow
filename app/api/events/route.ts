@@ -98,17 +98,16 @@ export async function POST(request: NextRequest) {
 
           await notify({
             to:           email,
-            subject:      `🔥 TourFlow: ${offer.client_name} WhatsApp-a keçdi!`,
+            subject:      `TourFlow: ${offer.client_name} otel seçdi`,
             body: `
               <p>Müştəri <strong>${offer.client_name}</strong> <em>${offer.destination}</em> üzrə
               <strong>${hotelName ?? 'bir oteli'}</strong> seçib WhatsApp-a keçdi.</p>
-              <p style="font-size:18px;font-weight:700;color:#2F54D1;margin:12px 0">
-                Bu isti bir potensial müştəridir! 🔥
+              <p style="font-size:16px;font-weight:600;color:#0B0F17;margin:12px 0">
+                Müştəri satın almağa hazırdır — mümkün qədər tez əlaqə saxlayın.
               </p>
-              <p style="color:#64748b;font-size:13px">Mümkün qədər tez cavab verin.</p>
             `,
             managerId:    offer.agency_id,
-            telegramText: `🔥 ${offer.client_name} WhatsApp-a keçdi! Otel: ${hotelName ?? '—'} (${offer.destination})`,
+            telegramText: `✅ ${offer.client_name} otel seçdi: ${hotelName ?? '—'} (${offer.destination}). Tez əlaqə saxlayın.`,
             priority:     'HIGH',
           });
         } catch (err) {

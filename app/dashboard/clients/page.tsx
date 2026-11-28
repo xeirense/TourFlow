@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuth } from '@/lib/auth';
 import { SOURCE_LABELS, type ClientSource } from '@/lib/types';
 import Icon from '@/app/components/Icon';
 import { PageTitle } from '@/app/components/AppHeader';
@@ -41,8 +41,7 @@ export default async function ClientsPage({
   const src = sp.source ?? '';
   const hot = sp.hot === '1';
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuth();
   if (!user) redirect('/login');
 
   // Build query
@@ -108,7 +107,7 @@ export default async function ClientsPage({
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
       <PageTitle
         title="Müştərilər"
-        subtitle={`${clients.length} müştəri · təklif göndərdikcə avtomatik əlavə olunur`}
+        subtitle={`${clients.length} müştəri · təklif göndərdikcə kart avtomatik yaranır`}
         actions={
           <a href="/api/clients/export" className="btn btn-sm btn-secondary">
             <Icon name="download" className="w-3.5 h-3.5" />
@@ -129,21 +128,31 @@ export default async function ClientsPage({
             className="input pl-9"
           />
         </div>
+        <select
+          name="source"
+          defaultValue={src}
+          aria-label="Müraciət kanalı"
+          className="input w-auto pr-8 hidden sm:block"
+        >
+          <option value="">Bütün kanallar</option>
+          {(['whatsapp','instagram','referral','walk-in','other'] as ClientSource[]).map(s => (
+            <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
+          ))}
+        </select>
+        {hot && <input type="hidden" name="hot" value="1" />}
         <button type="submit" className="btn btn-md btn-dark">Axtar</button>
       </form>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
-        <Link href={buildFilter('hot', hot ? '' : '1')} className={chipCls(hot)}>
+        <Link
+          href={buildFilter('hot', hot ? '' : '1')}
+          className={chipCls(hot)}
+          title="Təkliflərinə 2 və daha çox dəfə baxan müştərilər"
+        >
           <Icon name="flame" className="w-3.5 h-3.5" />
-          İsti müştərilər
+          Yüksək maraq
         </Link>
-        <span className="w-px h-5 bg-slate-200 mx-1" />
-        {(['whatsapp','instagram','referral','walk-in','other'] as ClientSource[]).map(s => (
-          <Link key={s} href={buildFilter('source', src === s ? '' : s)} className={chipCls(src === s)}>
-            {SOURCE_LABELS[s]}
-          </Link>
-        ))}
         {allTags.slice(0, 8).map(t => (
           <Link key={t} href={buildFilter('tag', tag === t ? '' : t)} className={chipCls(tag === t)}>
             #{t}
@@ -182,7 +191,7 @@ export default async function ClientsPage({
                       {isHotClient && (
                         <span className="pill pill-brand">
                           <Icon name="flame" className="w-3 h-3" />
-                          İsti
+                          Yüksək maraq
                         </span>
                       )}
                       {c.tags.slice(0, 2).map(t => (

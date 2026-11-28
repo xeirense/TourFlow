@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuth } from '@/lib/auth';
 import CopyButton from './CopyButton';
 import WhatsAppMsgButton from './WhatsAppMsgButton';
 import OfferMenu from './OfferMenu';
@@ -54,12 +54,13 @@ function timeAgo(iso: string): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuth();
   if (!user) redirect('/login');
 
-  // ── Auto-link: if user was invited to a team, link their account ────────────
-  if (user.email) {
+  // ── Auto-link (if this user was invited to a team) runs in parallel with
+  //    the profile/team queries instead of blocking them.
+  const autoLink = (async () => {
+    if (!user.email) return;
     const { data: pendingMembership } = await supabase
       .from('agency_members')
       .select('id')
@@ -72,7 +73,7 @@ export default async function DashboardPage() {
         .update({ member_user_id: user.id, status: 'active' })
         .eq('id', pendingMembership.id);
     }
-  }
+  })();
 
   const [profileResult, teamResult] = await Promise.all([
     supabase
@@ -84,6 +85,7 @@ export default async function DashboardPage() {
       .from('agency_members')
       .select('member_user_id, status')
       .eq('owner_id', user.id),
+    autoLink,
   ]);
 
   const teamMembers: TeamMember[] = (teamResult.data ?? []) as TeamMember[];

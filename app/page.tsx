@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { PLANS, type PlanTier } from '@/lib/planConfig';
 import Icon, { type IconName } from '@/app/components/Icon';
@@ -43,8 +43,7 @@ const FEATURES: { icon: IconName; title: string; desc: string }[] = [
 ];
 
 export default async function LandingPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user } = await getAuth();
   if (user) redirect('/dashboard');
 
   const enterpriseWa = WA_SUPPORT

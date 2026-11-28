@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuth } from '@/lib/auth';
 import {
   PLANS,
   getEffectivePlan,
@@ -76,8 +76,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuth();
   if (!user) redirect('/login');
 
   const { period: rawPeriod } = await searchParams;
