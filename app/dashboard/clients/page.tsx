@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAuth } from '@/lib/auth';
 import { SOURCE_LABELS, type ClientSource } from '@/lib/types';
 import { formatPhone } from '@/lib/phone';
+import { agencyHasFeature } from '@/lib/plan-server';
 import Icon from '@/app/components/Icon';
 import { PageTitle } from '@/app/components/AppHeader';
 
@@ -61,7 +62,10 @@ export default async function ClientsPage({
   if (tag) query = query.contains('tags', [tag]);
   if (src) query = query.eq('source', src);
 
-  const { data: rawClients } = await query;
+  const [{ data: rawClients }, canExport] = await Promise.all([
+    query,
+    agencyHasFeature(user.id, 'clientExport'),
+  ]);
   let clients = (rawClients ?? []) as ClientRow[];
 
   // Enrich with views data from offers
@@ -114,10 +118,12 @@ export default async function ClientsPage({
         title="Müştərilər"
         subtitle={`${clients.length} müştəri · təklif göndərdikcə kart avtomatik yaranır`}
         actions={
-          <a href="/api/clients/export" className="btn btn-sm btn-secondary">
-            <Icon name="download" className="w-3.5 h-3.5" />
-            CSV ixrac
-          </a>
+          canExport ? (
+            <a href="/api/clients/export" className="btn btn-sm btn-secondary">
+              <Icon name="download" className="w-3.5 h-3.5" />
+              CSV ixrac
+            </a>
+          ) : undefined
         }
       />
 

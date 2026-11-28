@@ -59,6 +59,13 @@ export async function POST(request: NextRequest) {
     // ── Validation ─────────────────────────────────────────────────────────────
     const body = (await request.json()) as OfferInput;
 
+    if ((body as { parentOfferId?: string }).parentOfferId && !plan.features.alternativeOffer) {
+      return NextResponse.json(
+        { error: 'Alternativ təklif Growth planından aktivdir', upgrade: true },
+        { status: 403 },
+      );
+    }
+
     if (!body.managerWhatsapp?.trim()) {
       return NextResponse.json({ error: 'Menecerin WhatsApp nömrəsi tələb olunur' }, { status: 400 });
     }

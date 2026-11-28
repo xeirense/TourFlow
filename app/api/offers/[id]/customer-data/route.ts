@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { supabase as adminClient } from '@/lib/supabase';
+import { agencyHasFeature } from '@/lib/plan-server';
 
 /**
  * POST /api/offers/[id]/customer-data
@@ -13,6 +15,13 @@ export async function POST(
   try {
     const { id } = await params;
     const { favorites, note } = await request.json();
+
+    // Favourites + note are a Growth+ feature of the agency that sent the offer
+    const { data: offer } = await adminClient.from('offers').select('agency_id').eq('id', id).maybeSingle();
+    if (!offer) return NextResponse.json({ error: 'Təklif tapılmadı' }, { status: 404 });
+    if (!(await agencyHasFeature(offer.agency_id, 'customerFavorites'))) {
+      return NextResponse.json({ error: 'Bu funksiya aktiv deyil' }, { status: 403 });
+    }
 
     const supabase = await createSupabaseServerClient();
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { agencyHasFeature } from '@/lib/plan-server';
 
 // ─── GET /api/templates — list this user's templates ──────────────────────────
 export async function GET() {
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'İcazə yoxdur' }, { status: 401 });
+
+    if (!(await agencyHasFeature(user.id, 'templates'))) {
+      return NextResponse.json({ error: 'Şablonlar Growth planından aktivdir', upgrade: true }, { status: 403 });
+    }
 
     const body = await request.json();
     const { name, destination, nights, includes, note } = body;
