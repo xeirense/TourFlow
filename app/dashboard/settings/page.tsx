@@ -177,8 +177,8 @@ export default function SettingsPage() {
                       : planData.subscription_status}
                   </p>
                 </div>
-                <Link href="/#qiymetler" className="btn btn-sm btn-secondary">
-                  Planlara bax
+                <Link href="/dashboard/plan" className="btn btn-sm btn-secondary">
+                  Planı dəyiş
                 </Link>
               </div>
               <div className="mt-4">

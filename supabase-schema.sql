@@ -828,3 +828,35 @@ ON CONFLICT (id) DO UPDATE
   SET public             = EXCLUDED.public,
       file_size_limit    = EXCLUDED.file_size_limit,
       allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- ── V13: protect plan / billing / admin fields ────────────────────────────────
+CREATE OR REPLACE FUNCTION public.protect_agency_profile_fields()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF current_user IN ('authenticated', 'anon') THEN
+    IF TG_OP = 'INSERT' THEN
+      NEW.plan_tier           := 'growth';
+      NEW.subscription_status := 'trialing';
+      NEW.trial_ends_at       := NOW() + INTERVAL '14 days';
+      NEW.monthly_offers_used := 0;
+      NEW.monthly_reset_at    := DATE_TRUNC('month', NOW()) + INTERVAL '1 month';
+      NEW.is_admin            := false;
+    ELSE
+      NEW.plan_tier           := OLD.plan_tier;
+      NEW.subscription_status := OLD.subscription_status;
+      NEW.trial_ends_at       := OLD.trial_ends_at;
+      NEW.monthly_offers_used := OLD.monthly_offers_used;
+      NEW.monthly_reset_at    := OLD.monthly_reset_at;
+      NEW.is_admin            := OLD.is_admin;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS protect_agency_profile_fields ON public.agency_profiles;
+CREATE TRIGGER protect_agency_profile_fields
+  BEFORE INSERT OR UPDATE ON public.agency_profiles
+  FOR EACH ROW EXECUTE FUNCTION public.protect_agency_profile_fields();

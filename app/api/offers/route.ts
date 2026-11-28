@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { supabase as adminClient } from '@/lib/supabase';
 import {
   PLANS,
   getEffectivePlan,
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
       let used = p.monthly_offers_used ?? 0;
       if (p.monthly_reset_at && new Date(p.monthly_reset_at) <= new Date()) {
         used = 0;
-        await supabase
+        // Plan/counter columns are protected from user writes (V13) — use the service key
+        await adminClient
           .from('agency_profiles')
           .update({ monthly_offers_used: 0, monthly_reset_at: nextMonthReset() })
           .eq('id', user.id);
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
 
         // Increment monthly counter
         if (monthlyLimited) {
-          await supabase
+          await adminClient
             .from('agency_profiles')
             .update({ monthly_offers_used: monthlyUsedNow + 1 })
             .eq('id', user.id);

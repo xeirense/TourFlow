@@ -91,7 +91,7 @@ export default function AppHeader(props: AppHeaderProps) {
 
           {/* Plan pill */}
           <Link
-            href="/dashboard/settings"
+            href="/dashboard/plan"
             title="Plan və istifadə"
             className={`hidden sm:inline-flex items-center gap-1.5 text-xs rounded-full border px-2.5 py-1 whitespace-nowrap transition-colors ${
               props.planUrgent
