@@ -336,6 +336,11 @@ function CreatePageContent() {
           if (clientRes.ok) {
             const newClient = await clientRes.json();
             resolvedClientId = newClient.id ?? null;
+          } else if (clientRes.status === 409) {
+            // Phone already belongs to a client — link the offer to that card
+            // instead of leaving it without a client.
+            const dup = await clientRes.json().catch(() => null);
+            resolvedClientId = dup?.existingId ?? null;
           }
         }
 
@@ -859,23 +864,28 @@ function CreatePageContent() {
           {dupClient && !selectedClientId && (
             <div className="bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
               <p className="text-xs text-amber-800">
-                ⚠️ Bu nömrə artıq <strong>{dupClient.name}</strong> kartında var.
+                ⚠️ Bu nömrə artıq <strong>{dupClient.name}</strong> kartında var. Təklif bu karta bağlanacaq.
               </p>
               <div className="flex gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClientName(dupClient.name);
+                    setSelectedClientId(dupClient.id);
+                    setDupClient(null);
+                  }}
+                  className="text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-2.5 py-1"
+                >
+                  Bu kartı istifadə et
+                </button>
                 <a
                   href={`/dashboard/clients/${dupClient.id}`}
                   target="_blank"
-                  className="text-xs font-semibold text-teal-700 hover:underline"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-teal-700 hover:underline self-center"
                 >
                   Kartı aç
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setDupClient(null)}
-                  className="text-xs text-slate-500 hover:text-slate-700"
-                >
-                  Yenə də yeni kart
-                </button>
               </div>
             </div>
           )}

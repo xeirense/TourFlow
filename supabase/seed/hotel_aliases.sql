@@ -68,7 +68,7 @@ ON CONFLICT (normalized_name, lower(city)) DO UPDATE SET
   aliases=ARRAY(SELECT DISTINCT unnest(public.hotels.aliases || EXCLUDED.aliases));
 
 INSERT INTO public.hotels (name,city,country,stars,default_meal,source,verified,chain,aliases)
-VALUES ('Titanic Mardan Palace','Lara','Türkiyə',5,'UAI','seed',true,'Titanic',ARRAY['titanik','Titanic Hotel','Mardan Palace','Titanic Lara'])
+VALUES ('Titanic Mardan Palace','Antalya','Türkiyə',5,'UAI','seed',true,'Titanic',ARRAY['titanik','Titanic Hotel','Mardan Palace','Titanic Lara'])
 ON CONFLICT (normalized_name, lower(city)) DO UPDATE SET
   chain=EXCLUDED.chain, verified=true,
   aliases=ARRAY(SELECT DISTINCT unnest(public.hotels.aliases || EXCLUDED.aliases));
