@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ACTIVITY_LABELS, SOURCE_LABELS, type TFClient, type ClientActivity, type Reminder } from '@/lib/types';
 import Icon from '@/app/components/Icon';
+import { formatPhone } from '@/lib/phone';
 import { PageTitle } from '@/app/components/AppHeader';
 
 interface OfferRow {
@@ -270,8 +271,8 @@ export default function ClientProfilePage() {
                     <p className="font-medium text-ink truncate">{client.fullName}</p>
                     {client.phone && (
                       <a href={`https://wa.me/${client.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-brand-700 hover:underline">
-                        {client.phone}
+                        className="text-xs text-brand-700 hover:underline tabular-nums">
+                        {formatPhone(client.phone)}
                       </a>
                     )}
                     {client.email && <p className="text-xs text-slate-500 truncate">{client.email}</p>}

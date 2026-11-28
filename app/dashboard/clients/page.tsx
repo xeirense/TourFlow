@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getAuth } from '@/lib/auth';
 import { SOURCE_LABELS, type ClientSource } from '@/lib/types';
+import { formatPhone } from '@/lib/phone';
 import Icon from '@/app/components/Icon';
 import { PageTitle } from '@/app/components/AppHeader';
 
@@ -23,11 +24,13 @@ interface ClientRow {
   // Joined (via offers)
   last_viewed_at?: string | null;
   total_views?: number;
+  decided?: boolean; // selected a hotel or said "not interested"
 }
 
+// "Yüksək maraq": opened offers 2+ times but has not decided yet
+// (no hotel selected, not declined) — the clients worth calling now.
 function isHot(row: ClientRow): boolean {
-  // "Hot" = ≥2 total views, no offer yet selected (heuristic from offer data)
-  return (row.total_views ?? 0) >= 2;
+  return (row.total_views ?? 0) >= 2 && !row.decided;
 }
 
 export default async function ClientsPage({
@@ -66,14 +69,15 @@ export default async function ClientsPage({
     const clientIds = clients.map(c => c.id);
     const { data: offerStats } = await supabase
       .from('offers')
-      .select('client_id, views_count, last_viewed_at')
+      .select('client_id, views_count, last_viewed_at, status, customer_response')
       .in('client_id', clientIds);
 
-    const statsMap: Record<string, { views: number; lastViewed: string | null }> = {};
+    const statsMap: Record<string, { views: number; lastViewed: string | null; decided: boolean }> = {};
     for (const o of (offerStats ?? [])) {
       if (!o.client_id) continue;
-      const existing = statsMap[o.client_id] ?? { views: 0, lastViewed: null };
+      const existing = statsMap[o.client_id] ?? { views: 0, lastViewed: null, decided: false };
       existing.views += o.views_count ?? 0;
+      if (o.status === 'selected' || o.customer_response === 'not_interested') existing.decided = true;
       if (o.last_viewed_at && (!existing.lastViewed || o.last_viewed_at > existing.lastViewed)) {
         existing.lastViewed = o.last_viewed_at;
       }
@@ -84,6 +88,7 @@ export default async function ClientsPage({
       ...c,
       total_views:    statsMap[c.id]?.views ?? 0,
       last_viewed_at: statsMap[c.id]?.lastViewed ?? null,
+      decided:        statsMap[c.id]?.decided ?? false,
     }));
   }
 
@@ -148,7 +153,7 @@ export default async function ClientsPage({
         <Link
           href={buildFilter('hot', hot ? '' : '1')}
           className={chipCls(hot)}
-          title="Təkliflərinə 2 və daha çox dəfə baxan müştərilər"
+          title="Təklifə 2+ dəfə baxıb, hələ qərar verməyən müştərilər"
         >
           <Icon name="flame" className="w-3.5 h-3.5" />
           Yüksək maraq
@@ -199,7 +204,7 @@ export default async function ClientsPage({
                       ))}
                     </div>
                     <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 flex-wrap text-xs text-slate-500">
-                      {c.phone && <span>{c.phone}</span>}
+                      {c.phone && <span className="tabular-nums">{formatPhone(c.phone)}</span>}
                       <span>{travelersText}</span>
                       <span>{SOURCE_LABELS[c.source]}</span>
                       {c.preferred_destinations.length > 0 && (

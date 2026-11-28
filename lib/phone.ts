@@ -23,3 +23,11 @@ export function normalizePhone(raw: string): string {
   // Fallback: return trimmed original
   return raw.trim();
 }
+
+/** Display format for Azerbaijani numbers: +994 50 123 45 67 (others unchanged). */
+export function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const n = normalizePhone(raw);
+  const m = n.match(/^\+994(\d{2})(\d{3})(\d{2})(\d{2})$/);
+  return m ? `+994 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : raw;
+}
