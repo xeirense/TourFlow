@@ -223,6 +223,11 @@ export default async function OfferPage({
             tövsiyə edirik.
           </p>
         </div>
+
+        <p className="text-center text-[11px] text-slate-400 pt-2">
+          {agencyLabel} tərəfindən TourFlow ilə hazırlanıb ·{' '}
+          <a href="/privacy" target="_blank" className="hover:text-slate-600 underline-offset-2 hover:underline">Məxfilik</a>
+        </p>
       </section>
 
       {/* ── Sticky WhatsApp footer ──────────────────────────────────────── */}

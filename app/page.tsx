@@ -283,8 +283,9 @@ export default async function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-xs text-slate-500">
             <a href="#qiymetler" className="hover:text-ink transition-colors">Qiymətlər</a>
+            <Link href="/privacy" className="hover:text-ink transition-colors">Məxfilik</Link>
+            <Link href="/terms" className="hover:text-ink transition-colors">Şərtlər</Link>
             <Link href="/login" className="hover:text-ink transition-colors">Daxil ol</Link>
-            <Link href="/register" className="hover:text-ink transition-colors">Qeydiyyat</Link>
           </div>
         </div>
       </footer>

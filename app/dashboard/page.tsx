@@ -6,6 +6,7 @@ import CopyButton from './CopyButton';
 import WhatsAppMsgButton from './WhatsAppMsgButton';
 import OfferMenu from './OfferMenu';
 import TodayReminders from './TodayReminders';
+import Onboarding, { type OnboardingStep } from './Onboarding';
 import Icon from '@/app/components/Icon';
 import { PageTitle } from '@/app/components/AppHeader';
 
@@ -75,17 +76,23 @@ export default async function DashboardPage() {
     }
   })();
 
-  const [profileResult, teamResult] = await Promise.all([
+  const [profileResult, teamResult, , membershipResult] = await Promise.all([
     supabase
       .from('agency_profiles')
-      .select('whatsapp')
+      .select('whatsapp, agency_logo, agency_name, telegram_chat_id')
       .eq('id', user.id)
-      .maybeSingle<{ whatsapp: string | null }>(),
+      .maybeSingle<{ whatsapp: string | null; agency_logo: string | null; agency_name: string | null; telegram_chat_id: number | null }>(),
     supabase
       .from('agency_members')
       .select('member_user_id, status')
       .eq('owner_id', user.id),
     autoLink,
+    supabase
+      .from('agency_members')
+      .select('id')
+      .eq('member_user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
   ]);
 
   const teamMembers: TeamMember[] = (teamResult.data ?? []) as TeamMember[];
@@ -124,12 +131,25 @@ export default async function DashboardPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (host ? `${proto}://${host}` : '');
   const managerWa = (profileResult.data?.whatsapp ?? '').replace(/\D/g, '');
 
+  // ── First-run checklist (owners only; invited managers skip it) ──────────
+  const isTeamMember = !!membershipResult.data;
+  const prof = profileResult.data;
+  const onboarding: OnboardingStep[] = [
+    { key: 'profile',  icon: 'building', title: 'Agentlik profilini doldurun', desc: 'Ad və WhatsApp nömrəsi müştərinin gördüyü təklif səhifəsində göstərilir.', href: '/dashboard/settings', cta: 'Profil',     done: !!(prof?.agency_name && prof?.whatsapp) },
+    { key: 'logo',     icon: 'image',    title: 'Loqonu yükləyin',             desc: 'Hər təklif agentliyinizin brendi ilə açılsın.',                                 href: '/dashboard/settings', cta: 'Yüklə',      done: !!prof?.agency_logo },
+    { key: 'offer',    icon: 'file',     title: 'İlk təklifi göndərin',         desc: 'Kataloqdan otel seçin, linki müştəriyə WhatsApp-la göndərin.',                  href: '/create',             cta: 'Yarat',      done: offers.length > 0 },
+    { key: 'team',     icon: 'users',    title: 'Menecerləri dəvət edin',       desc: 'Komandanın təklifləri və nəticələri bir paneldə görünsün.',                     href: '/dashboard/team',     cta: 'Dəvət et',   done: teamMembers.length > 0 },
+    { key: 'telegram', icon: 'send',     title: 'Telegram bildirişlərini qoşun', desc: 'Müştəri təklifi açanda telefonunuza dərhal mesaj gəlsin.',                    href: '/dashboard/settings', cta: 'Qoş',        done: !!prof?.telegram_chat_id },
+  ];
+
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <PageTitle
         title="Təkliflər"
         subtitle="Göndərdiyiniz təkliflər və müştərilərin reaksiyası"
       />
+
+      {!isTeamMember && <Onboarding steps={onboarding} />}
 
       {/* ── KPIs ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

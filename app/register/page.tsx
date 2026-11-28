@@ -216,7 +216,12 @@ function RegisterForm() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed">
+          Hesab yaratmaqla <Link href="/terms" className="text-ink hover:underline">İstifadə şərtlərini</Link> və{' '}
+          <Link href="/privacy" className="text-ink hover:underline">Məxfilik siyasətini</Link> qəbul edirsiniz.
+        </p>
+
+        <p className="text-center text-sm text-slate-500 mt-4">
           Artıq hesabınız var?{' '}
           <Link href="/login" className="text-brand-700 font-medium hover:underline">
             Daxil olun

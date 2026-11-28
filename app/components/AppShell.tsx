@@ -19,7 +19,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
   const { supabase, user } = await getAuth();
   if (!user) redirect('/login');
 
-  const [profileRes, teamRes] = await Promise.all([
+  const [profileRes, teamRes, membershipRes] = await Promise.all([
     supabase
       .from('agency_profiles')
       .select('agency_name, is_admin, plan_tier, subscription_status, trial_ends_at, monthly_offers_used, monthly_reset_at')
@@ -29,6 +29,12 @@ export default async function AppShell({ children }: { children: React.ReactNode
       .from('agency_members')
       .select('id', { count: 'exact', head: true })
       .eq('owner_id', user.id),
+    supabase
+      .from('agency_members')
+      .select('id')
+      .eq('member_user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
   ]);
 
   const profile  = profileRes.data;
@@ -59,6 +65,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         planUrgent={planUrgent}
         isAdmin={!!profile?.is_admin}
         teamCount={teamRes.count ?? 0}
+        isOwner={!membershipRes.data}
       />
       {children}
     </div>

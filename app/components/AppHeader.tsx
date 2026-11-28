@@ -12,6 +12,7 @@ export interface AppHeaderProps {
   planUrgent: boolean;        // trial ending soon / limit nearly used
   isAdmin:    boolean;
   teamCount:  number;
+  isOwner:    boolean;        // agency owner (not an invited manager)
 }
 
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
@@ -26,9 +27,12 @@ export default function AppHeader(props: AppHeaderProps) {
   const pathname = usePathname();
   const router   = useRouter();
 
+  const base = props.isOwner
+    ? [...NAV.slice(0, 3), { href: '/dashboard/rehber', label: 'Rəhbər paneli', icon: 'briefcase' as IconName }, ...NAV.slice(3)]
+    : NAV.filter(n => n.href !== '/dashboard/team');
   const nav = props.isAdmin
-    ? [...NAV, { href: '/admin/hotels', label: 'Admin', icon: 'tool' as IconName }]
-    : NAV;
+    ? [...base, { href: '/admin/hotels', label: 'Admin', icon: 'tool' as IconName }]
+    : base;
 
   function isActive(href: string, exact?: boolean) {
     return exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
