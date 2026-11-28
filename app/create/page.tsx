@@ -979,6 +979,7 @@ interface LastPrice {
 
 function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
   const [uploading,  setUploading]  = useState(false);
+  const [uploadErr,  setUploadErr]  = useState('');
   const [lastPrice,  setLastPrice]  = useState<LastPrice | null>(null);
 
   // Fetch last price when a catalog hotel is selected
@@ -997,13 +998,17 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadErr('');
     try {
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (res.ok && data.url) onChange({ imageUrl: data.url });
-    } catch {}
+      else setUploadErr(data.error ?? 'Şəkil yüklənmədi');
+    } catch {
+      setUploadErr('Şəkil yüklənmədi. İnternet bağlantısını yoxlayın.');
+    }
     setUploading(false);
     e.target.value = '';
   }
@@ -1218,6 +1223,7 @@ function HotelBlock({ index, hotel, onChange, onRemove }: HotelBlockProps) {
           </label>
           <span className="text-xs text-slate-500">və ya yuxarıdan təsviri şəkil seçin · maks. 5 MB</span>
         </div>
+        {uploadErr && <p className="text-xs text-red-600">{uploadErr}</p>}
         <input
           type="url"
           value={hotel.imageUrl}

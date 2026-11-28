@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
       .from('hotel-images')
       .upload(fileName, buffer, { contentType: file.type, upsert: false });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('[POST /api/upload] storage:', error.message);
+      return NextResponse.json({ error: 'Şəkil yüklənmədi. Bir az sonra yenidən cəhd edin.' }, { status: 500 });
+    }
 
     const { data: { publicUrl } } = adminClient.storage
       .from('hotel-images')

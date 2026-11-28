@@ -814,3 +814,17 @@ CREATE INDEX IF NOT EXISTS idx_telegram_tokens_agency
 
 CREATE INDEX IF NOT EXISTS idx_telegram_tokens_expires
   ON public.telegram_connect_tokens (expires_at);
+
+-- ── V12: storage bucket for uploaded images ──────────────────────────────────
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'hotel-images',
+  'hotel-images',
+  true,
+  5242880,                                            -- 5 MB, same as the API limit
+  ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO UPDATE
+  SET public             = EXCLUDED.public,
+      file_size_limit    = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
