@@ -122,7 +122,7 @@ export default function TeamPage() {
           <div className="mb-4 flex items-start gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
             <Icon name="lock" className="w-4 h-4 text-slate-400 flex-shrink-0 mt-px" />
             <p>
-              Planınızın {memberLimit} menecer limiti dolub.
+              Planınızın komanda limiti dolub ({memberLimit} nəfər, rəhbər daxil).
               {waSupport && (
                 <a
                   href={`https://wa.me/${waSupport.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! TourFlow komanda limitini artırmaq üçün planımı yüksəltmək istəyirəm.')}`}

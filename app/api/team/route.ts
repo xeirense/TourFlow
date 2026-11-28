@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       if (totalMembers >= plan.limits.memberLimit) {
         return NextResponse.json(
           {
-            error:              `${plan.limits.memberLimit} menecer limitinə çatdınız. Daha çox üzv əlavə etmək üçün planınızı yüksəldin.`,
+            error:              `Komanda limiti dolub (${plan.limits.memberLimit} nəfər, rəhbər daxil). Daha çox menecer üçün planınızı yüksəldin.`,
             memberLimitReached: true,
             limit:              plan.limits.memberLimit,
           },
