@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { db } from '@/lib/db';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { supabase as adminClient } from '@/lib/supabase';
 import type { Hotel, Offer } from '@/lib/types';
 import { INCLUDES_META, MEAL_LABELS, CURRENCY_SYMBOLS } from '@/lib/types';
 import { PLANS, getEffectivePlan, DEFAULT_PLAN_DATA, type ProfilePlanData } from '@/lib/planConfig';
@@ -62,8 +62,9 @@ export default async function OfferPage({
   // Check if agency plan allows customer favorites/notes
   let showCustomerNote = false;
   if (offer.agencyId) {
-    const supabase = await createSupabaseServerClient();
-    const { data: agencyProfile } = await supabase
+    // Visitors are anonymous: RLS hides other agencies' profiles, so read the
+    // plan with the service key (only the plan columns are used here).
+    const { data: agencyProfile } = await adminClient
       .from('agency_profiles')
       .select('plan_tier, subscription_status, trial_ends_at')
       .eq('id', offer.agencyId)

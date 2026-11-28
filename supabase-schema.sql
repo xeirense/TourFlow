@@ -56,11 +56,9 @@ CREATE TABLE public.agency_profiles (
 -- ── Row Level Security – offers ───────────────────────────────────────────────
 ALTER TABLE public.offers ENABLE ROW LEVEL SECURITY;
 
--- Public can READ any offer (needed for /offer/[id] public links)
-CREATE POLICY "Public read offers"
-  ON public.offers
-  FOR SELECT
-  USING (true);
+-- Read access: see V14 at the end of this file ("Agency reads own and team
+-- offers"). The public offer page loads offers with the service key, so no
+-- public SELECT policy is needed.
 
 -- Authenticated users can INSERT their own offers (agency_id must match JWT uid)
 CREATE POLICY "Auth users insert own offers"
@@ -860,3 +858,25 @@ DROP TRIGGER IF EXISTS protect_agency_profile_fields ON public.agency_profiles;
 CREATE TRIGGER protect_agency_profile_fields
   BEFORE INSERT OR UPDATE ON public.agency_profiles
   FOR EACH ROW EXECUTE FUNCTION public.protect_agency_profile_fields();
+
+-- ── V14: offers readable only by their agency (no public read) ───────────────
+DROP POLICY IF EXISTS "Public read offers" ON public.offers;
+
+DROP POLICY IF EXISTS "Agency reads own and team offers" ON public.offers;
+CREATE POLICY "Agency reads own and team offers"
+  ON public.offers
+  FOR SELECT
+  TO authenticated
+  USING (
+    agency_id = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM public.agency_members m
+      WHERE m.owner_id       = auth.uid()
+        AND m.member_user_id = offers.agency_id
+        AND m.status         = 'active'
+    )
+  );
+
+-- Anonymous visitors get no direct table access at all
+REVOKE SELECT ON public.offers FROM anon;
