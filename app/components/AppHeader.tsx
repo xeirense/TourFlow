@@ -13,6 +13,7 @@ export interface AppHeaderProps {
   isAdmin:    boolean;
   teamCount:  number;
   isOwner:    boolean;        // agency owner (not an invited manager)
+  hasOwnerPanel: boolean;     // plan includes the owner panel (Pro and above)
 }
 
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
@@ -27,9 +28,11 @@ export default function AppHeader(props: AppHeaderProps) {
   const pathname = usePathname();
   const router   = useRouter();
 
-  const base = props.isOwner
+  // Owner panel: only for agency owners on a plan that includes it (no locked item for others)
+  const withPanel = props.isOwner && props.hasOwnerPanel
     ? [...NAV.slice(0, 3), { href: '/dashboard/rehber', label: 'Rəhbər paneli', icon: 'briefcase' as IconName }, ...NAV.slice(3)]
-    : NAV.filter(n => n.href !== '/dashboard/team');
+    : NAV;
+  const base = props.isOwner ? withPanel : withPanel.filter(n => n.href !== '/dashboard/team');
   const nav = props.isAdmin
     ? [...base, { href: '/admin/hotels', label: 'Admin', icon: 'tool' as IconName }]
     : base;

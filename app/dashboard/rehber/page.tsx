@@ -4,7 +4,6 @@ import { getAuth } from '@/lib/auth';
 import { PLANS, getEffectivePlan, DEFAULT_PLAN_DATA, type ProfilePlanData } from '@/lib/planConfig';
 import Icon, { type IconName } from '@/app/components/Icon';
 import { PageTitle } from '@/app/components/AppHeader';
-import LockedCard from '@/app/components/LockedCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface OfferRow {
@@ -97,21 +96,8 @@ export default async function OwnerPanelPage({
   const tier       = getEffectivePlan(profileRes.data ?? DEFAULT_PLAN_DATA);
   const hasPanel   = PLANS[tier].features.adminPanel;
 
-  if (!hasPanel) {
-    return (
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <PageTitle
-          title="Rəhbər paneli"
-          subtitle="Menecerlər üzrə satış müqayisəsi, diqqət tələb edən satışlar və trendlər"
-        />
-        <LockedCard requiredPlan="pro" title="Rəhbər paneli" heightCls="h-64" />
-        <p className="text-sm text-slate-500 max-w-xl">
-          Rəhbər paneli Pro Agency planına daxildir: hər menecerin göndərdiyi təkliflər, müştəri reaksiyaları,
-          dönüşüm nisbəti və gecikmiş xatırlatmalar bir ekranda.
-        </p>
-      </main>
-    );
-  }
+  // Plans without the owner panel never see it — not even as a locked page
+  if (!hasPanel) redirect('/dashboard');
 
   // ── People in the agency ─────────────────────────────────────────────────
   const members = ((membersRes.data ?? []) as MemberRow[]).filter(m => m.member_user_id && m.status === 'active');

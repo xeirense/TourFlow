@@ -66,6 +66,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         isAdmin={!!profile?.is_admin}
         teamCount={teamRes.count ?? 0}
         isOwner={!membershipRes.data}
+        hasOwnerPanel={plan.features.adminPanel}
       />
       {children}
     </div>
