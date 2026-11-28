@@ -45,7 +45,11 @@ Password = Resend API açarı.
 > (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`). Domen təsdiqlənməyənə qədər Resend yalnız Resend hesabının
 > sahibinə məktub göndərir.
 
-## E-poçt şablonlarını Azərbaycan dilinə keçirmək
+## E-poçt şablonu (mütləq)
+
+> **Vacib:** link `{{ .ConfirmationURL }}` deyil, aşağıdakı `/auth/confirm?token_hash=…` formatında olmalıdır.
+> Belə olduqda link istənilən cihazda açılır (məs. sorğu kompüterdən, məktub telefonda).
+> Site URL (Authentication → URL Configuration) `https://tour-flow-nine.vercel.app` olmalıdır.
 
 Authentication → Emails → Templates → **Reset Password**:
 
@@ -55,6 +59,6 @@ Authentication → Emails → Templates → **Reset Password**:
 ```html
 <h2>Şifrənin yenilənməsi</h2>
 <p>TourFlow hesabınız üçün şifrənin yenilənməsi tələb olunub.</p>
-<p><a href="{{ .ConfirmationURL }}">Yeni şifrə təyin et</a></p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Yeni şifrə təyin et</a></p>
 <p>Bu tələbi siz etməmisinizsə, məktubu nəzərə almayın — şifrəniz dəyişməyəcək.</p>
 ```
