@@ -41,6 +41,7 @@ interface OfferRow {
   hotels: Hotel[] | null;
   selected_hotel: string | null;
   expires_at: string | null;
+  parent_offer_id?: string | null;
 }
 
 // ─── Period helpers ───────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ export default async function AnalyticsPage({
   // ── Fetch ──────────────────────────────────────────────────────────────────
   let query = supabase
     .from('offers')
-    .select('id, client_name, destination, views_count, status, customer_response, created_at, last_viewed_at, hotels, selected_hotel, expires_at')
+    .select('id, client_name, destination, views_count, status, customer_response, created_at, last_viewed_at, hotels, selected_hotel, expires_at, parent_offer_id')
     .eq('agency_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -132,30 +133,26 @@ export default async function AnalyticsPage({
   const now = new Date();
 
   // Viewed 3+ times, no response, not closed
-  const hotLeads = rows.filter(o =>
-    (o.views_count ?? 0) >= 3 &&
-    o.customer_response == null &&
-    o.status !== 'selected',
-  );
+  // Each offer appears once, under its most urgent reason (expiring → hot → price → unseen)
+  const DAY_MS     = 86_400_000;
+  const isOpen     = (o: OfferRow) => o.status !== 'selected' && o.customer_response !== 'not_interested';
+  const expiresIn  = (o: OfferRow) => (o.expires_at ? new Date(o.expires_at).getTime() - now.getTime() : Infinity);
+  const shown      = new Set<string>();
+  const take       = (list: OfferRow[]) => list.filter(o => (shown.has(o.id) ? false : (shown.add(o.id), true)));
+  const hasAlt     = new Set(rows.map(o => o.parent_offer_id).filter(Boolean) as string[]);
 
-  // Said "price too high" — renegotiation opportunity
-  const priceHighOffers = rows.filter(o => o.customer_response === 'price_high');
-
-  // Expiring within 72h, has views, not closed
-  const expiringOffers = rows.filter(o => {
-    if (!o.expires_at) return false;
-    const diff = new Date(o.expires_at).getTime() - now.getTime();
-    return diff > 0 && diff < 72 * 3_600_000 && (o.views_count ?? 0) > 0 && o.status !== 'selected';
-  });
-
-  // Expiring soon but never opened
-  const neverViewedExpiring = rows.filter(o => {
-    if (!o.expires_at) return false;
-    const exp = new Date(o.expires_at);
-    return exp > now &&
-      (exp.getTime() - now.getTime()) < 72 * 3_600_000 &&
-      (o.views_count ?? 0) === 0;
-  });
+  // Viewed, no decision, expires within 24h
+  const expiringOffers = take(rows.filter(o =>
+    isOpen(o) && (o.views_count ?? 0) > 0 && expiresIn(o) > 0 && expiresIn(o) < DAY_MS && o.customer_response == null));
+  // Opened 3+ times, no answer yet
+  const hotLeads = take(rows.filter(o =>
+    isOpen(o) && (o.views_count ?? 0) >= 3 && o.customer_response == null && expiresIn(o) > 0));
+  // "Price is high" and no cheaper alternative sent yet
+  const priceHighOffers = take(rows.filter(o =>
+    o.customer_response === 'price_high' && !hasAlt.has(o.id) && expiresIn(o) > 0));
+  // Never opened and expires within 24h
+  const neverViewedExpiring = take(rows.filter(o =>
+    isOpen(o) && (o.views_count ?? 0) === 0 && expiresIn(o) > 0 && expiresIn(o) < DAY_MS));
 
   const attentionCount =
     hotLeads.length + priceHighOffers.length + expiringOffers.length + neverViewedExpiring.length;
@@ -268,7 +265,7 @@ export default async function AnalyticsPage({
             {expiringOffers.map(o => (
               <AttentionItem key={`exp-${o.id}`} id={o.id} icon="clock" danger
                 label={`${o.destination}${o.client_name ? ` — ${o.client_name}` : ''}`}
-                note="72 saata bitir — baxılıb, qərar yoxdur" />
+                note="24 saat ərzində bitir — baxılıb, qərar yoxdur" />
             ))}
             {neverViewedExpiring.map(o => (
               <AttentionItem key={`nv-${o.id}`} id={o.id} icon="inbox"

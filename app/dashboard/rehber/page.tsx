@@ -18,6 +18,7 @@ interface OfferRow {
   customer_response: string | null;
   expires_at: string | null;
   last_viewed_at: string | null;
+  parent_offer_id: string | null;
 }
 interface MemberRow {
   member_user_id: string | null;
@@ -118,7 +119,7 @@ export default async function OwnerPanelPage({
   const [{ data: offersData }, { data: remindersData }] = await Promise.all([
     supabase
       .from('offers')
-      .select('id, agency_id, created_by, client_name, destination, created_at, views_count, status, customer_response, expires_at, last_viewed_at')
+      .select('id, agency_id, created_by, client_name, destination, created_at, views_count, status, customer_response, expires_at, last_viewed_at, parent_offer_id')
       .in('agency_id', ids)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
@@ -159,13 +160,17 @@ export default async function OwnerPanelPage({
                                 && !(o.expires_at && new Date(o.expires_at).getTime() < now));
   const hot      = open.filter(o => (o.views_count ?? 0) >= 2 && !o.customer_response);
   const expiring = open.filter(o => o.expires_at && new Date(o.expires_at).getTime() - now < DAY && !o.customer_response);
-  const priceHigh = open.filter(o => o.customer_response === 'price_high');
+  const hasAlternative = new Set(all.map(o => o.parent_offer_id).filter(Boolean));
+  const priceHigh = open.filter(o => o.customer_response === 'price_high' && !hasAlternative.has(o.id));
   type Att = { id: string; icon: IconName; title: string; note: string; who: string; danger?: boolean; href?: string };
   const attention: Att[] = [
     ...expiring.map(o => ({ id: o.id, icon: 'clock' as IconName, danger: true, title: `${o.client_name} — ${o.destination}`, note: '24 saat ərzində bitir, cavab yoxdur', who: nameOf(ownerOf(o)) })),
     ...hot.map(o => ({ id: o.id, icon: 'flame' as IconName, title: `${o.client_name} — ${o.destination}`, note: `${o.views_count} dəfə baxılıb, qərar verilməyib`, who: nameOf(ownerOf(o)) })),
     ...priceHigh.map(o => ({ id: o.id, icon: 'tag' as IconName, title: `${o.client_name} — ${o.destination}`, note: 'Qiyməti yüksək tapıb — alternativ göndərin', who: nameOf(ownerOf(o)), href: `/create?from=${o.id}&alt=1` })),
-  ].slice(0, 12);
+  ]
+    // one row per offer — the first (most urgent) reason wins
+    .filter((a, i, arr) => arr.findIndex(b => b.id === a.id) === i)
+    .slice(0, 12);
 
   // ── 8-week trend ─────────────────────────────────────────────────────────
   const weeks = Array.from({ length: 8 }, (_, i) => {
