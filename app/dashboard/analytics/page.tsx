@@ -317,7 +317,7 @@ export default async function AnalyticsPage({
             )}
           </Card>
         ) : (
-          <LockedCard requiredPlan="growth" title="Müştəri rəyləri" heightCls="h-40" />
+          <LockedCard requiredPlan="growth" title="Müştəri rəyləri" heightCls="h-48" />
         )}
       </div>
 

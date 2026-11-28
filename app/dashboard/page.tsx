@@ -149,7 +149,7 @@ export default async function DashboardPage() {
         subtitle="Göndərdiyiniz təkliflər və müştərilərin reaksiyası"
       />
 
-      {!isTeamMember && <Onboarding steps={onboarding} />}
+      {!isTeamMember && <Onboarding steps={onboarding} userId={user.id} />}
 
       {/* ── KPIs ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

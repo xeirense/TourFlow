@@ -18,12 +18,13 @@ export interface OnboardingStep {
  * First-run checklist for a new agency. Disappears once every step is done,
  * or when the owner hides it (remembered in this browser).
  */
-export default function Onboarding({ steps }: { steps: OnboardingStep[] }) {
+export default function Onboarding({ steps, userId }: { steps: OnboardingStep[]; userId: string }) {
+  const storageKey = `tf_onboarding_hidden_${userId}`;
   const [hidden, setHidden] = useState(true); // avoid flash before localStorage is read
 
   useEffect(() => {
-    setHidden(localStorage.getItem('tf_onboarding_hidden') === '1');
-  }, []);
+    setHidden(localStorage.getItem(storageKey) === '1');
+  }, [storageKey]);
 
   const doneCount = steps.filter(s => s.done).length;
   if (hidden || doneCount === steps.length) return null;
@@ -38,7 +39,7 @@ export default function Onboarding({ steps }: { steps: OnboardingStep[] }) {
           </p>
         </div>
         <button
-          onClick={() => { localStorage.setItem('tf_onboarding_hidden', '1'); setHidden(true); }}
+          onClick={() => { localStorage.setItem(storageKey, '1'); setHidden(true); }}
           className="btn btn-sm btn-ghost px-2"
           aria-label="Gizlət"
           title="Gizlət"

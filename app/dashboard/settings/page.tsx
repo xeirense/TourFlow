@@ -183,7 +183,7 @@ export default function SettingsPage() {
               </div>
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-slate-500">Bu ay göndərilən təkliflər</span>
+                  <span className="text-slate-500">Bu ay yaradılan təkliflər <span className="text-slate-400">(silinənlər də sayılır)</span></span>
                   <span className="text-ink font-medium">
                     {monthlyUsed} / {monthlyLimit == null ? 'limitsiz' : monthlyLimit}
                   </span>
@@ -270,7 +270,7 @@ export default function SettingsPage() {
           title="Bildiriş qaydaları"
           description="Hansı bildirişlərin nə vaxt göndəriləcəyini seçin."
         >
-          <NotificationSettingsSection />
+          <NotificationSettingsSection remindersAvailable={planInfo.features.clientReminders} />
         </SettingsRow>
 
         {/* ── Password ─────────────────────────────────────────────────────── */}
@@ -395,7 +395,7 @@ function TelegramSection() {
 }
 
 // ─── Notification preferences ────────────────────────────────────────────────
-function NotificationSettingsSection() {
+function NotificationSettingsSection({ remindersAvailable }: { remindersAvailable: boolean }) {
   const supabase = createSupabaseBrowserClient();
 
   interface NotifSettings {
@@ -451,14 +451,18 @@ function NotificationSettingsSection() {
         {([
           { key: 'highEnabled',   label: 'Vacib hadisələr',   desc: 'İlk baxış, müştərinin cavabı və otel seçimi — dərhal' },
           { key: 'normalEnabled', label: 'Təkrar baxışlar',    desc: 'Eyni təklifə təkrar baxış — 3 saatda bir dəfə' },
-          { key: 'lowEnabled',    label: 'Xatırlatmalar',      desc: 'Sakit saatlarda göndərilmir' },
+          { key: 'lowEnabled',    label: 'Xatırlatmalar',      desc: remindersAvailable ? 'Sakit saatlarda göndərilmir' : 'Avtomatik xatırlatmalar Growth planından aktivdir' },
         ] as { key: 'highEnabled' | 'normalEnabled' | 'lowEnabled'; label: string; desc: string }[]).map(({ key, label, desc }) => (
           <div key={key} className="flex items-center justify-between gap-4 px-4 py-3">
             <div>
               <p className="text-sm text-ink">{label}</p>
               <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
             </div>
-            <Switch on={settings[key]} label={label} onChange={() => setSettings(s => ({ ...s, [key]: !s[key] }))} />
+            {key === 'lowEnabled' && !remindersAvailable ? (
+              <Link href="/dashboard/plan" className="btn btn-sm btn-secondary flex-shrink-0">Planlara bax</Link>
+            ) : (
+              <Switch on={settings[key]} label={label} onChange={() => setSettings(s => ({ ...s, [key]: !s[key] }))} />
+            )}
           </div>
         ))}
       </div>

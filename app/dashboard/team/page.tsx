@@ -106,7 +106,7 @@ export default function TeamPage() {
           <>
             {activeCount} aktiv
             {invitedCount > 0 && ` · ${invitedCount} dəvət gözləyir`}
-            {memberLimit !== null && ` · plan limiti ${memberLimit} menecer`}
+            {memberLimit !== null && ` · plan: siz + ${memberLimit - 1} menecer · ${Math.max(0, memberLimit - totalWithOwner)} boş yer`}
           </>
         }
       />

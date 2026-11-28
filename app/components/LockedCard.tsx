@@ -1,4 +1,5 @@
 import type { PlanTier } from '@/lib/planConfig';
+import Link from 'next/link';
 import Icon from './Icon';
 
 const PLAN_LABELS: Record<PlanTier, string> = {
@@ -49,6 +50,9 @@ export default function LockedCard({
           </span>{' '}
           və yuxarı planlarda aktivdir
         </p>
+        <Link href="/dashboard/plan" className="btn btn-sm btn-secondary mt-1">
+          Planlara bax
+        </Link>
       </div>
     </div>
   );

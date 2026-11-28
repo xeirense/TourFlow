@@ -49,8 +49,8 @@ export default async function AppShell({ children }: { children: React.ReactNode
   let planNote: string | null = null;
   let planUrgent = false;
   if (trialing) {
-    planNote   = `Sınaq · ${daysLeft} gün`;
-    planUrgent = daysLeft <= 3;
+    planNote   = limit ? `Sınaq · ${daysLeft} gün · ${used}/${limit} təklif` : `Sınaq · ${daysLeft} gün`;
+    planUrgent = daysLeft <= 3 || (!!limit && used >= limit * 0.8);
   } else if (limit) {
     planNote   = `${used}/${limit} təklif`;
     planUrgent = used >= limit * 0.8;
